@@ -426,6 +426,17 @@ footer .row { display: flex; flex-wrap: wrap; gap: .4rem 1rem; align-items: cent
                     object-fit: contain; object-position: 50% 0; }
 @supports not (height: 1cqw) { .demo .vbox video { height: auto; aspect-ratio: 480 / 536; } }
 #sounds .srow > .pop { grid-column: 1 / -1; }
+/* "What's a Chladni plate?": the story in a column, one of the demos' screens beside it (stacked on a phone) */
+.chladni { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.2rem 2rem; align-items: start; }
+@media (min-width: 820px) { .chladni { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); } }
+.chladni .story { max-width: 68ch; }
+.chladni .story p { margin: 0 0 .85rem; }
+.chladni .story h3 { font: 600 1.1rem/1.25 "Barlow Semi Condensed", "Barlow", sans-serif; letter-spacing: .02em; margin: 1.1rem 0 .45rem; }
+.chladni .story ul { margin: 0 0 .85rem; padding-left: 1.15rem; display: grid; gap: .4rem; }
+.chladni figure { margin: 0; background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: .8rem .8rem .9rem; }
+.chladni figure img { display: block; width: 100%; max-width: 360px; margin: 0 auto; aspect-ratio: 1; border-radius: 8px; background: #080810;
+                      image-rendering: pixelated; }
+.chladni figcaption { margin: .65rem .2rem 0; color: var(--muted); font-size: .9rem; line-height: 1.45; }
 </style>
 </head>
 <body>
@@ -586,6 +597,46 @@ footer .row { display: flex; flex-wrap: wrap; gap: .4rem 1rem; align-items: cent
   <div class="fallback" id="sharefb" hidden></div>
 </div>
 <div class="menu rowmenu" id="rowmenu" role="menu" aria-label="Sound" hidden></div>
+
+<section class="sec" id="chladni" aria-labelledby="chl-h">
+  <h2 id="chl-h">What's a Chladni plate?</h2>
+  <div class="chladni">
+    <div class="story">
+      <p>In 1787 the German physicist and musician Ernst Chladni scattered sand on a thin brass plate and drew a violin
+        bow along its edge. The plate rang out a note, and the sand jumped into a sharp geometric figure.</p>
+      <p>A vibrating plate doesn't move everywhere at once. Some regions swing up and down hard while certain lines stay
+        perfectly still: the <b>nodal lines</b>. The sand is thrown off the moving parts and piles up on the still lines,
+        so the figure you see is the shape of the sound. Every note has its own figure, and higher notes draw finer
+        ones.</p>
+      <h3>Why it's worth a look</h3>
+      <ul>
+        <li><b>It makes sound visible.</b> Each pitch leaves a pattern you can see, not only hear.</li>
+        <li><b>It moved science forward.</b> Napoleon saw Chladni's demonstration in 1808 and backed a prize for
+          explaining it. Sophie Germain won it in 1816 with work that helped found the theory of how solid materials
+          vibrate.</li>
+        <li><b>Instrument makers still use it.</b> Violin and guitar builders vibrate a top plate dusted with glitter or tea
+          leaves, read its figures, and carve until it rings right. The same physics shapes how cymbals, gongs, bells and
+          drums sound.</li>
+        <li><b>It's mesmerising.</b> The "cymatics" videos of sand snapping into patterns on a speaker are this
+          experiment.</li>
+      </ul>
+      <h3>What CYMA-1 does with it</h3>
+      <p>It turns the experiment into an instrument. Each key makes a virtual plate ring, and the sand on the screen settles
+        along the still lines of whatever is sounding, because the picture and the sound come from the same simulation of
+        the plate's vibration patterns (its <i>modes</i>). Morph the plate from a circle to a hexagon or a star and both the
+        figure and the overtones change together. Press harder and you bow harder, as Chladni did; in SURFACE mode the
+        keyboard itself becomes the plate, and resting a finger on a dark key pulls out a pure harmonic.</p>
+      <p class="hint">CYMA-1's plates are Chladni-like rather than laboratory-exact: they are modelled as stiffened
+        membranes, close enough to draw the classic figures and ring with their overtones.</p>
+    </div>
+    <figure>
+      <img src="demos/01_singing_bowl_lean.png" width="480" height="480" loading="lazy"
+           alt="The FM-1's screen during the singing bowl demo: on a round bronze plate, sand gathered into a ring near the rim and a few points inside.">
+      <figcaption>From the "Singing bowl" demo below: a round bronze plate, ringing. The sand has gathered on its nodal
+        lines, a ring near the rim and a few still points inside: the shape of the note you hear.</figcaption>
+    </figure>
+  </div>
+</section>
 
 <section class="sec" id="sounds" aria-labelledby="snd-h">
   <h2 id="snd-h">Sounds</h2>

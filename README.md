@@ -8,6 +8,27 @@ Each key strikes, bows or rains on a virtual metal plate. The sand on the 240×2
 - SELECT morphs the plate from a circle through hexagon, star, guitar and bar;
 - SEQ turns the keybed itself into the plate.
 
+## What's a Chladni plate?
+
+In 1787 the physicist and musician Ernst Chladni scattered sand on a thin brass plate and drew a violin bow along its edge. The plate rang, and the sand jumped into a sharp geometric figure.
+
+A vibrating plate doesn't move everywhere at once. Some regions swing hard while certain lines stay perfectly still (the *nodal lines*). The sand is thrown off the moving parts and piles up on the still lines, so the figure is the shape of the sound. Every note draws its own figure.
+
+Why it's worth a look:
+
+- It makes sound visible.
+- Napoleon saw it in 1808 and backed a prize for explaining it. Sophie Germain won it in 1816 with work that helped found the theory of how solid materials vibrate.
+- Violin and guitar makers still read Chladni figures on glitter-dusted top plates to carve them until they ring right.
+- It's the same experiment as today's "cymatics" videos.
+
+CYMA-1 makes it playable:
+
+- The picture and the sound come from the same simulation of the plate's vibration patterns.
+- Morphing the plate changes the figure and the overtones together.
+- Pressing harder bows harder.
+
+The plates are Chladni-like rather than laboratory-exact: they are modelled as stiffened membranes.
+
 ## Play it
 
 The browser version is in `docs/`. It is the same C code as the FM-1 firmware, compiled to WebAssembly.
