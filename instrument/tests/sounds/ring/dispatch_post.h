@@ -1,0 +1,11 @@
+#undef ann_frame
+#undef log_frame
+#undef remote_frame
+#undef app_sysex
+#undef ota_service
+#undef usb_cmd
+#undef app_panic
+#undef ota_session
+#undef enter_uboot
+#undef bu_step
+#undef fm1_ms

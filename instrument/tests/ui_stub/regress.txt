@@ -1,0 +1,72 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 UI regressions (the UI review's fixes, 2026-10-24), on the UI stub's fake engine:
+#   python3 reference/fm1-base/tools/build.py instrument/tests/ui_stub --host
+#   instrument/tests/ui_stub/build/host/cyma-ui_host instrument/tests/ui_stub/regress.txt OUTDIR     (exit 0)
+# Redraws are counted in lcd_blit calls (blitmark, expect blits_since): the plate is 5 a frame, each rail 1.
+wait 1800
+shotmode 1
+ui tour 0
+silence
+wait 2000
+# silent and settled: nothing redraws (0 fps)
+blitmark
+wait 5000
+expect blits_since 0
+# tour step 5 on a still plate: only the rail's chevron, at its 8 pulse steps (it was the whole plate at 60 fps:
+# ~3,500 blits in 10 s)
+ui tour 5
+wait 500
+blitmark
+wait 10000
+expect blits_since <700
+# tour step 1: only the plate's last strip, for the pulsing down-chevron (it was ~3,100)
+ui tour 1
+wait 500
+blitmark
+wait 10000
+expect blits_since <600
+ui tour 0
+wait 2000
+# a struck note's tail: nothing drawn changes long before the energies reach zero, and nothing redraws
+decay 4
+strike 50 40 100
+wait 14000
+blitmark
+wait 8000
+expect blits_since 0
+# figures: the sand on the nodal lines (per mille), circle and square, bowed
+param SHAPE 1
+ui sweep 1
+wait 1000
+bow 6 -12
+wait 4000
+expect nodal >980
+silence
+param SHAPE 3
+ui sweep 1
+wait 1000
+bow 9 -12
+wait 4000
+expect nodal >980
+silence
+# the grains follow the plate's area: GRAINS 2000 is the reference circle's; the BAR (about a fifth of it) gets 600
+ui grains 2000
+param SHAPE 8
+wait 500
+expect grains <700
+param SHAPE 1
+wait 500
+expect grains 2000
+# the footer (sounds polish): OCT keeps the preset's name and flashes its badge for the message's 1.3 s; the flash
+# ends by itself (one footer redraw, then nothing at all)
+ui preset 7
+silence
+wait 4000
+msg OCTAVE 0
+wait 300
+blitmark
+wait 2500
+expect blits_since 1
+blitmark
+wait 2000
+expect blits_since 0

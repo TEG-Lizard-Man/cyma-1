@@ -1,0 +1,1027 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 presets (spec §4.4, §8.2, §8.3.2): each of the 24 factory presets, two renders:
+#   presetNN_c4.wav  C4 (key 7) at velocity 100, held 1.5 s (bowed and rained presets sound only while held),
+#                    then 1.5 s of ring: no NaN, peak <= -0.3 dBFS, peak >= -30 dBFS, and the level of the
+#                    strike for the +-4 dB match (an advisory figure: M4/M7 tune LEVEL against it).
+#   presetNN_g7.wav  G5 (key 26) at OCT+2, velocity 127: the top of the range, where modes crowd Nyquist. tools/
+#                    golden.py measures the energy above 0.45 fs there: <= -100 dB, <= -80 dB with DRIVE (16-18).
+#                    presetNN_g7f.wav is its float twin (wavf, the fx output just before the one quantisation): the
+#                    gate reads that one, since an undithered int24 render of a quiet note shows only the 24-bit
+#                    container's floor above 0.45 fs (golden.py reports the int24 figure beside it).
+# Each render has 200 ms of lead-in, so golden.py can tell the strike from the last preset's room still ringing.
+# Between presets REC (DAMP) chokes the plate; the room tail of the last preset may still be fading.
+#   instrument/build/host/cyma-1_host instrument/tests/presets.txt OUTDIR
+master 4096
+wait 1700
+tour 0
+#
+# ---- 01 SINGING BOWL
+preset 1
+wait 400
+expect preset 1
+peakreset
+wav24 out:preset01_c4.wav
+wait 200
+#@mark p01_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset01_g7.wav
+wavf out:preset01_g7f.wav
+wait 200
+#@mark p01_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 02 HANDPAN
+preset 2
+wait 400
+expect preset 2
+peakreset
+wav24 out:preset02_c4.wav
+wait 200
+#@mark p02_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset02_g7.wav
+wavf out:preset02_g7f.wav
+wait 200
+#@mark p02_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 03 GLASS LOTUS
+preset 3
+wait 400
+expect preset 3
+peakreset
+wav24 out:preset03_c4.wav
+wait 200
+#@mark p03_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset03_g7.wav
+wavf out:preset03_g7f.wav
+wait 200
+#@mark p03_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 04 MARIMBA
+preset 4
+wait 400
+expect preset 4
+peakreset
+wav24 out:preset04_c4.wav
+wait 200
+#@mark p04_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset04_g7.wav
+wavf out:preset04_g7f.wav
+wait 200
+#@mark p04_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 05 VIBES
+preset 5
+wait 400
+expect preset 5
+peakreset
+wav24 out:preset05_c4.wav
+wait 200
+#@mark p05_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset05_g7.wav
+wavf out:preset05_g7f.wav
+wait 200
+#@mark p05_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 06 TABLA SKIN
+preset 6
+wait 400
+expect preset 6
+peakreset
+wav24 out:preset06_c4.wav
+wait 200
+#@mark p06_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset06_g7.wav
+wavf out:preset06_g7f.wav
+wait 200
+#@mark p06_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 07 CATHEDRAL GONG
+preset 7
+wait 400
+expect preset 7
+peakreset
+wav24 out:preset07_c4.wav
+wait 200
+#@mark p07_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset07_g7.wav
+wavf out:preset07_g7f.wav
+wait 200
+#@mark p07_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 08 STEEL RAIN
+preset 8
+wait 400
+expect preset 8
+peakreset
+wav24 out:preset08_c4.wav
+wait 200
+#@mark p08_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset08_g7.wav
+wavf out:preset08_g7f.wav
+wait 200
+#@mark p08_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 09 BOWED GLASS PAD
+preset 9
+wait 400
+expect preset 9
+peakreset
+wav24 out:preset09_c4.wav
+wait 200
+#@mark p09_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset09_g7.wav
+wavf out:preset09_g7f.wav
+wait 200
+#@mark p09_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 10 GAMELAN STAR
+preset 10
+wait 400
+expect preset 10
+peakreset
+wav24 out:preset10_c4.wav
+wait 200
+#@mark p10_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset10_g7.wav
+wavf out:preset10_g7f.wav
+wait 200
+#@mark p10_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 11 PRISM BELLS
+preset 11
+wait 400
+expect preset 11
+peakreset
+wav24 out:preset11_c4.wav
+wait 200
+#@mark p11_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset11_g7.wav
+wavf out:preset11_g7f.wav
+wait 200
+#@mark p11_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 12 GUITAR BODY
+preset 12
+wait 400
+expect preset 12
+peakreset
+wav24 out:preset12_c4.wav
+wait 200
+#@mark p12_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset12_g7.wav
+wavf out:preset12_g7f.wav
+wait 200
+#@mark p12_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 13 CHAOS STADIUM
+preset 13
+wait 400
+expect preset 13
+peakreset
+wav24 out:preset13_c4.wav
+wait 200
+#@mark p13_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset13_g7.wav
+wavf out:preset13_g7f.wav
+wait 200
+#@mark p13_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 14 FELT PLATE
+preset 14
+wait 400
+expect preset 14
+peakreset
+wav24 out:preset14_c4.wav
+wait 200
+#@mark p14_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset14_g7.wav
+wavf out:preset14_g7f.wav
+wait 200
+#@mark p14_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 15 WATER GONG
+preset 15
+wait 400
+expect preset 15
+peakreset
+wav24 out:preset15_c4.wav
+wait 200
+#@mark p15_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset15_g7.wav
+wavf out:preset15_g7f.wav
+wait 200
+#@mark p15_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 16 MEMBRANE KICK
+preset 16
+wait 400
+expect preset 16
+peakreset
+wav24 out:preset16_c4.wav
+wait 200
+#@mark p16_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset16_g7.wav
+wavf out:preset16_g7f.wav
+wait 200
+#@mark p16_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 17 LOOSE TOM
+preset 17
+wait 400
+expect preset 17
+peakreset
+wav24 out:preset17_c4.wav
+wait 200
+#@mark p17_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset17_g7.wav
+wavf out:preset17_g7f.wav
+wait 200
+#@mark p17_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 18 THUNDER SHEET
+preset 18
+wait 400
+expect preset 18
+peakreset
+wav24 out:preset18_c4.wav
+wait 200
+#@mark p18_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset18_g7.wav
+wavf out:preset18_g7f.wav
+wait 200
+#@mark p18_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 19 ICE
+preset 19
+wait 400
+expect preset 19
+peakreset
+wav24 out:preset19_c4.wav
+wait 200
+#@mark p19_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset19_g7.wav
+wavf out:preset19_g7f.wav
+wait 200
+#@mark p19_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 20 KALIMBA TINE
+preset 20
+wait 400
+expect preset 20
+peakreset
+wav24 out:preset20_c4.wav
+wait 200
+#@mark p20_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset20_g7.wav
+wavf out:preset20_g7f.wav
+wait 200
+#@mark p20_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 21 AETHER
+preset 21
+wait 400
+expect preset 21
+peakreset
+wav24 out:preset21_c4.wav
+wait 200
+#@mark p21_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset21_g7.wav
+wavf out:preset21_g7f.wav
+wait 200
+#@mark p21_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 22 SURFACE GONG
+preset 22
+wait 400
+expect preset 22
+peakreset
+wav24 out:preset22_c4.wav
+wait 200
+#@mark p22_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset22_g7.wav
+wavf out:preset22_g7f.wav
+wait 200
+#@mark p22_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 23 BOWED SQUARE
+preset 23
+wait 400
+expect preset 23
+peakreset
+wav24 out:preset23_c4.wav
+wait 200
+#@mark p23_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset23_g7.wav
+wavf out:preset23_g7f.wav
+wait 200
+#@mark p23_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+# ---- 24 TEMPLE BELL
+preset 24
+wait 400
+expect preset 24
+peakreset
+wav24 out:preset24_c4.wav
+wait 200
+#@mark p24_c4_on
+key 7 down 100
+wait 1500
+key 7 up
+wait 1500
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+press REC
+wait 300
+release REC
+tap OCT+
+tap OCT+
+wait 100
+peakreset
+wav24 out:preset24_g7.wav
+wavf out:preset24_g7f.wav
+wait 200
+#@mark p24_g7_on
+key 26 down 127
+wait 1000
+key 26 up
+wait 1000
+wav24stop
+wavfstop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 300
+release REC
+tap OCT-
+tap OCT-
+expect octave 0
+#
+expect nan 0
+metrics

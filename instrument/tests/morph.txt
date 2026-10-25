@@ -1,0 +1,132 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 continuity (spec §3.2, §3.3, §3.8, §5.1, §8.2, §8.3.5): the three places a click could hide. tools/
+# golden.py high-passes each capture at 8 kHz and looks for any 1 ms window more than 6 dB above its running
+# median (between the marks), above a -110 dBFS floor.
+#   morph.wav         a held C4 while SELECT turns DRUM -> BAR, every detent, in 8 s (55 ms apart: no acceleration)
+#   morph_preset.wav  a held low chord while PRESETS loads 07, 24 and 15 (the 300 ms physics-continuous glide)
+#   morph_steal.wav   twelve held notes on 8 voices: notes 9-12 each steal a slot (5 ms fade, zero added latency)
+# The notes are pitched low and struck soft (no contact noise), so no partial of their own reaches 8 kHz: anything
+# up there is a discontinuity.
+#   instrument/build/host/cyma-1_host instrument/tests/morph.txt OUTDIR
+master 4096
+wait 1700
+tour 0
+#
+# ---- SHAPE morph: all 128 detents (plus the keyframe dwells) under a held note
+preset 1
+param DECAY 10
+param WANDER 0
+param NOISE 0
+param HARDNESS 20
+param SHAPE 0
+wait 500
+peakreset
+wav24 out:morph.wav
+wait 200
+key 7 down 100
+wait 1000
+#@mark morph_start
+turn SELECT 144 55
+#@mark morph_end
+wait 800
+key 7 up
+wait 500
+wav24stop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 500
+release REC
+#
+# ---- preset glide under a held chord (OCT-2: F1 C2 A2)
+preset 1
+param NOISE 0
+wait 300
+tap OCT-
+tap OCT-
+peakreset
+wav24 out:morph_preset.wav
+wait 200
+key 0 down 90
+key 7 down 90
+key 16 down 90
+wait 1500
+#@mark preset_start
+turn PRESET 6
+wait 1500
+expect preset 7
+turn PRESET 17
+wait 1500
+expect preset 24
+turn PRESET -9
+wait 1500
+expect preset 15
+#@mark preset_end
+key 0 up
+key 7 up
+key 16 up
+wait 500
+wav24stop
+expect nan 0
+expect peakq <8104001
+press REC
+wait 500
+release REC
+#
+# ---- voice stealing: eight held notes fill the slots, four more each take the oldest held one
+preset 1
+param HARDNESS 0
+param NOISE 0
+param WANDER 0
+wait 300
+peakreset
+wav24 out:morph_steal.wav
+wait 200
+key 0 down 90
+wait 150
+key 2 down 90
+wait 150
+key 4 down 90
+wait 150
+key 5 down 90
+wait 150
+key 7 down 90
+wait 150
+key 9 down 90
+wait 150
+key 11 down 90
+wait 150
+key 12 down 90
+wait 300
+expect voices 8
+#@mark steal_start
+key 14 down 90
+wait 250
+key 16 down 90
+wait 250
+key 17 down 90
+wait 250
+key 19 down 90
+wait 800
+#@mark steal_end
+expect voices 8
+key 0 up
+key 2 up
+key 4 up
+key 5 up
+key 7 up
+key 9 up
+key 11 up
+key 12 up
+key 14 up
+key 16 up
+key 17 up
+key 19 up
+wait 500
+wav24stop
+expect nan 0
+expect peakq <8104001
+tap OCT+
+tap OCT+
+expect octave 0
+metrics

@@ -1,0 +1,141 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 demo 07 (spec §8.4): SURFACE GONG harmonics. SEQ's SURFACE mode: the 27 keys are strike points on one gong (the
+# panel's real key layout mapped over the plate). Velocity under 24 only touches: a point damper that leaves
+# the modes with a node there, the flageolet trick. The key LEDs show the vibration map. About 28 s.
+# TITLE: Surface gong harmonics
+# ABOUT: The keybed becomes one bronze gong: centre keys boom, edge keys shimmer, and light touches on dark (nodal) keys draw out pure harmonics.
+#   tools/render_demos.sh renders it: build/demos/07_surface_gong_harmonics.wav (24-bit), .mp3 and .gif (the screen every 250 ms)
+shotmode 1
+master 4096
+wait 1700
+tour 0
+preset 22
+wait 400
+wav24 out:07_surface_gong_harmonics.wav
+wait 300
+# SURFACE: the keybed is one bronze gong. A centre key booms, the edges shimmer
+key 9 down 110
+wait 78
+key 9 up
+wait 1818
+key 0 down 90
+wait 78
+key 0 up
+wait 1318
+key 26 down 90
+wait 78
+key 26 up
+wait 1318
+key 13 down 100
+wait 78
+key 13 up
+wait 1318
+# a pattern across the plate: each key is its own strike point
+key 9 down 96
+wait 68
+key 9 up
+wait 228
+key 16 down 82
+wait 68
+key 16 up
+wait 228
+key 4 down 88
+wait 68
+key 4 up
+wait 228
+key 21 down 80
+wait 68
+key 21 up
+wait 228
+key 9 down 104
+wait 68
+key 9 up
+wait 228
+key 12 down 84
+wait 68
+key 12 up
+wait 228
+key 18 down 78
+wait 68
+key 18 up
+wait 228
+key 2 down 90
+wait 68
+key 2 up
+wait 728
+# a big strike, then one light touch (velocity 10, a feather of pressure) held on a key: it damps that point and leaves the modes with a node there, a harmonic. Let go, strike, touch another
+key 11 down 120
+wait 78
+key 11 up
+wait 1018
+key 2 down 10 12
+wait 1398
+key 2 up
+wait 598
+key 11 down 105
+wait 78
+key 11 up
+wait 518
+key 18 down 10 12
+wait 1198
+key 18 up
+wait 498
+# OCT-: the surface root drops an octave, a deeper gong; a touch on it too
+tap OCT-
+wait 120
+key 9 down 115
+wait 78
+key 9 up
+wait 1118
+key 14 down 95
+wait 78
+key 14 up
+wait 918
+key 5 down 10 15
+wait 1298
+key 5 up
+wait 998
+# back up; a cascade along both edges
+tap OCT+
+wait 120
+key 0 down 84
+wait 58
+key 0 up
+wait 118
+key 1 down 92
+wait 58
+key 1 up
+wait 118
+key 25 down 100
+wait 58
+key 25 up
+wait 118
+key 26 down 84
+wait 58
+key 26 up
+wait 118
+key 2 down 92
+wait 58
+key 2 up
+wait 118
+key 24 down 100
+wait 58
+key 24 up
+wait 118
+key 3 down 84
+wait 58
+key 3 up
+wait 118
+key 22 down 92
+wait 58
+key 22 up
+wait 678
+# the centre, as hard as it goes
+key 9 down 125
+wait 78
+key 9 up
+wait 6318
+wav24stop
+expect nan 0
+expect peakq <8104001
+metrics

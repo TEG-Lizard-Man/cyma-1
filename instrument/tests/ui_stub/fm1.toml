@@ -1,0 +1,18 @@
+# CYMA-1 UI stub (M5): the real UI (instrument/ui/) on a fake engine and a fake object builder, so the screen can be
+# developed, measured and screenshotted on its own. Host only (it is never built for the device):
+#   python3 reference/fm1-base/tools/build.py instrument/tests/ui_stub --host
+#   instrument/tests/ui_stub/build/host/cyma-ui_host SCRIPT OUTDIR
+# It links the real parameter table and presets (M4) and plate tables (M1); its app.c fakes the rest.
+name = "CYMA-UI"
+id_prefix = "FM-1_949"
+usb_manufacturer = "CYMA"
+usb_product = "CYMA-1 UI STUB"
+o2 = ["../../src/params.c", "../../src/presets.c", "../../src/plates_data.c"]
+include = ["../.."]
+words = "words.tsv"
+ble = false
+mirror = false
+backup = false
+gen = ["../../tools/gen_fonts.py {gen}/cy_fonts.h"]
+tagline = "the CYMA-1 screen on a fake engine"
+licence = "MPL-2.0"

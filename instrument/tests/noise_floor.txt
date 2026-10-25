@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 noise floor (spec §3.10.6-7, §3.11, §8.2). MASTER is a float gain after the limiter, quantised once to
+# 24 bits with no dither, so:
+#   noise_silence.wav  at master 1448 (the spec's "-20 dB position": (1448/4096)^2 is -18 dB), nothing playing:
+#                      exact zeros
+#   noise_tone.wav     a sustained bowed tone at the same MASTER: every low bit alive. tools/golden.py looks at the
+#                      bottom byte of each sample between the marks: >= 250 of its 256 values seen, and no more
+#                      than 2 % of samples with it zero (a 16-bit path would leave it zero every time)
+#   instrument/build/host/cyma-1_host instrument/tests/noise_floor.txt OUTDIR
+wait 1700
+tour 0
+master 1448
+wait 300
+peakreset
+wav24 out:noise_silence.wav
+wait 3000
+wav24stop
+expect peakq 0
+#
+# ---- a sustained tone: preset 09 BOWED GLASS PAD, C4 leaned on
+preset 9
+wait 400
+peakreset
+wav24 out:noise_tone.wav
+wait 200
+key 7 down 100
+wait 300
+press_all 80
+wait 1200
+#@mark tone_on
+wait 4000
+#@mark tone_off
+key 7 up
+wait 1500
+wav24stop
+expect peakq >0
+expect nan 0
+# and back to silence: the tail ends in exact zeros again (the room is 6 s here)
+wait 40000
+peakreset
+wait 2000
+expect peakq 0
+metrics

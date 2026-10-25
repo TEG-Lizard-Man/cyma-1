@@ -1,0 +1,118 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 storage (spec §4.3, §5.3, §5.7, §8.2). The user bank (OBJ_USER) is written the moment SAVE is confirmed;
+# the settings (OBJ_SETTINGS: globals, last preset, octave, view, tour) autosave only when dirty, all voices have
+# been free for 3 s, and 30 s have passed since the last save. Then a reboot from the simulated flash.
+# The values themselves: there is no expect for a parameter, so tools/golden.py compares sound. The same strike on
+# U01 before the reboot and after it must match (1 dB on every 100 ms window that is above -60 dBFS), and must
+# differ from the factory preset it came from (DECAY x0.4 and BRIGHT +60 against x1.6 and 0).
+# Each capture starts with demo_hash 1 (it re-inits the engine and fx; integration): the reverb's two drifting
+# lines then start from the same state, so its tail cannot differ by where its random drift happens to be.
+#   instrument/build/host/cyma-1_host instrument/tests/storage.txt OUTDIR
+master 4096
+wait 1700
+tour 0
+expect preset 1
+# ---- the factory sound, for reference
+demo_hash 1
+seed 1
+wav24 out:p01_ref.wav
+wait 200
+#@mark p01_ref_on
+key 7 down 100
+wait 200
+key 7 up
+wait 2500
+wav24stop
+press REC
+wait 600
+release REC
+# ---- edit, SAVE: SAVE TO U01? (the first free slot); SAVE again writes it and U01 becomes the preset
+param DECAY 0.4
+param BRIGHT 60
+wait 100
+expect edited 1
+expect ledb_SAVE 3
+tap SAVE
+wait 200
+tap SAVE
+wait 300
+expect preset 25
+expect edited 0
+expect ledb_SAVE 1
+expect store_writes >0
+# U01 as it plays now (after 6 s of quiet, so the room is empty)
+wait 6000
+demo_hash 1
+seed 1
+wav24 out:u01_before.wav
+wait 200
+#@mark u01_before_on
+key 7 down 100
+wait 200
+key 7 up
+wait 2500
+wav24stop
+press REC
+wait 600
+release REC
+# ---- SAVE on a user preset: SAVE U01? and SAVE overwrites it; the same values, so nothing changes
+tap SAVE
+wait 200
+tap SAVE
+wait 300
+expect preset 25
+expect edited 0
+# ---- settings: octave +1 and the FIELD view, then 35 s of quiet for the autosave
+tap OCT+
+tap EDIT
+expect octave 1
+expect view 1
+wait 35000
+# ---- reboot from the flash: the last preset (U01), the octave and the view come back
+reboot
+wait 1700
+tour 0
+expect preset 25
+expect edited 0
+expect octave 1
+expect view 1
+tap OCT-
+tap EDIT
+tap EDIT
+expect octave 0
+expect view 0
+# U01 after the reboot: the same sound as before it
+wait 1000
+demo_hash 1
+seed 1
+wav24 out:u01_after.wav
+wait 200
+#@mark u01_after_on
+key 7 down 100
+wait 200
+key 7 up
+wait 2500
+wav24stop
+press REC
+wait 600
+release REC
+# ---- browsing: U01 follows 24; the empty U02..U32 are skipped, so the next is 01 again
+preset 24
+wait 200
+turn PRESET 1
+wait 600
+expect preset 25
+turn PRESET 1
+wait 600
+expect preset 1
+turn PRESET -1
+wait 600
+expect preset 25
+# the "preset" command reaches the user slot directly too
+preset 1
+preset 25
+wait 200
+expect preset 25
+expect edited 0
+expect nan 0
+metrics

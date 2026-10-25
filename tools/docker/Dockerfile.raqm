@@ -1,0 +1,16 @@
+# A thin layer on the pinned JieLi toolchain image (reference/optimist/tools/docker/Dockerfile, tagged
+# fm1-toolchain:20250324.1): adds libfribidi0 so the pinned Pillow wheel's bundled libraqm loads.
+# Without it PIL.features.check("raqm") is False and fm1-base's tools/gen_font.py fails
+# ("setting ... font features is not supported without libraqm": it asks for OpenType `tnum`).
+# raqm 0.10.3 and harfbuzz come from the Pillow 12.2.0 wheel itself; only FriBiDi comes from Debian.
+#
+#   docker build --platform linux/amd64 -t fm1-toolchain:20250324.1-raqm -f tools/docker/Dockerfile.raqm tools/docker
+#
+# Local use only: the JieLi toolchain carries no redistribution licence. Never push this image.
+ARG BASE=fm1-toolchain:20250324.1
+FROM ${BASE}
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libfribidi0 \
+ && rm -rf /var/lib/apt/lists/* \
+ && python3 -c "from PIL import features as f; assert f.check('raqm'), 'no raqm'; print('raqm', f.version('raqm'), 'fribidi', f.version('fribidi'), 'harfbuzz', f.version('harfbuzz'))"
+LABEL org.opencontainers.image.description="JieLi pi32v2 toolchain 20250324.1 + raqm for fm1-base builds: local use only, do not push"

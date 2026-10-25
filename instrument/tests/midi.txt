@@ -1,0 +1,122 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 MIDI (spec §3.9, §5.4, §8.2). In (polled in the main loop): notes, poly aftertouch (A0), channel
+# pressure (D0) and CC1 to every held slot, CC64 latch, pitch bend +-2 st; in SURFACE, notes map to keys. Out
+# (USB, channel 1): the FM-1's own notes with their velocity, and poly aftertouch for its pressure.
+#   midi_bend.wav  a long A3 (220 Hz) through MIDI, bent to the top: tools/golden.py finds the partial before and
+#                  after and wants 2^(2/12) = 1.1225 within 0.5 %
+#   instrument/build/host/cyma-1_host instrument/tests/midi.txt OUTDIR
+master 4096
+wait 1700
+tour 0
+out
+# ---- notes in
+midi 90 3C 64
+wait 50
+expect voices 1
+midi 90 40 64
+midi 90 43 64
+wait 50
+expect voices 3
+# poly aftertouch, channel pressure and the mod wheel: pressure to the held slots (no state to read: no NaN)
+midi A0 3C 60
+wait 200
+midi D0 50
+wait 100
+midi B0 01 40
+wait 100
+midi D0 00
+midi B0 01 00
+midi A0 3C 00
+wait 100
+# MIDI in is not echoed out: the FM-1 sends only what its own keys play
+expect_no_out USB 90 3C 64
+# ---- CC64: latch on (the ARP LED with it) and off
+midi B0 40 7F
+wait 50
+expect latched 1
+expect ledb_ARP 3
+midi 80 3C 00
+midi 80 40 00
+midi 80 43 00
+wait 200
+expect voices >0
+midi B0 40 00
+wait 50
+expect latched 0
+expect ledb_ARP 1
+press REC
+wait 600
+release REC
+wait 100
+#
+# ---- pitch bend: +2 st at full (14 bits: 3FFF), back to the centre (2000)
+preset 1
+param DECAY 10
+param WANDER 0
+param VIBRATO 0
+param ROOM 0
+wait 400
+wav24 out:midi_bend.wav
+wait 200
+midi 90 39 64
+wait 300
+#@mark bend_before
+wait 1500
+midi E0 7F 7F
+wait 200
+#@mark bend_up
+wait 1500
+#@mark bend_end
+midi E0 00 40
+wait 300
+midi 80 39 00
+wait 300
+wav24stop
+press REC
+wait 600
+release REC
+expect nan 0
+#
+# ---- out: the FM-1's own keys, note on with its velocity, poly aftertouch while leaned on, note off
+out
+key 0 down 100
+wait 50
+expect_out USB 90 35 64
+expect midi_out >0
+key 0 down 100 100
+wait 800
+expect_out USB A0 35 7F
+key 0 up
+wait 50
+expect_out USB 80 35 00
+out
+key 19 down 60
+wait 50
+expect_out USB 90 48 3C
+key 19 up
+wait 50
+expect_out USB 80 48 00
+out
+#
+# ---- SURFACE: notes are points (key = note - 53 - 12 x octave); a note off the keybed is ignored. The plate is
+# choked first (REC; the room is off since the bend), so a silent output means the note really was ignored
+tap SEQ
+expect keymode 1
+press REC
+wait 1000
+release REC
+wait 500
+peakreset
+midi 90 20 64
+wait 300
+midi 80 20 00
+expect peakq <1
+midi 90 3C 64
+wait 100
+midi 80 3C 00
+wait 300
+expect peakq >0
+tap SEQ
+expect keymode 0
+expect nan 0
+metrics

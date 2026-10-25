@@ -1,0 +1,433 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 demo 05 (spec §8.4): TABLA SKIN tension bends. A membrane (STIFFNESS 0) carved harmonic, low drum and high drum
+# both from the same preset over MIDI. Poly aftertouch on the bayan is TENSION (up to 5 st) and PALM together,
+# so the heel stroke bends up and talks. Teentaal theka, a cycle with fills, a tihai. About 27 s.
+# TITLE: Tabla tension bends
+# ABOUT: A loaded skin tuned harmonic, played as teentaal at 100 BPM; aftertouch on the low drum bends its pitch up like a bayan heel, and the stroke talks.
+#   tools/render_demos.sh renders it: build/demos/05_tabla_tension_bends.wav (24-bit), .mp3 and .gif (the screen every 250 ms)
+shotmode 1
+master 4096
+wait 1700
+tour 0
+preset 6
+wait 400
+wav24 out:05_tabla_tension_bends.wav
+wait 300
+# teentaal at 100 BPM: the theka, dha dhin dhin dha / dha dhin dhin dha / dha tin tin ta / ta dhin dhin dha
+midi 90 26 74
+midi 90 3E 6E
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 52
+midi 90 45 4E
+wait 146
+midi 80 45 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 52
+midi 90 45 4E
+wait 146
+midi 80 45 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 68
+midi 90 3E 62
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 6C
+midi 90 3E 66
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 50
+midi 90 45 4C
+wait 146
+midi 80 45 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 50
+midi 90 45 4C
+wait 146
+midi 80 45 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 66
+midi 90 3E 60
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 64
+midi 90 3E 5E
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 45 3E
+wait 118
+midi 80 45 00
+wait 478
+midi 90 45 3E
+wait 118
+midi 80 45 00
+wait 478
+midi 90 3E 4C
+wait 88
+midi 80 3E 00
+wait 508
+midi 90 3E 4E
+wait 88
+midi 80 3E 00
+wait 508
+midi 90 26 52
+midi 90 45 4E
+wait 146
+midi 80 45 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 54
+midi 90 45 50
+wait 146
+midi 80 45 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 6A
+midi 90 3E 64
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 338
+# second cycle: the bayan's heel bends (poly aftertouch on the low skin), te-te fills between
+midi 90 26 76
+midi 90 3E 6E
+wait 86
+midi A0 26 18
+wait 48
+midi A0 26 30
+wait 8
+midi 80 3E 00
+wait 38
+midi A0 26 48
+wait 48
+midi A0 26 60
+wait 48
+midi A0 26 78
+wait 48
+midi A0 26 66
+wait 48
+midi A0 26 55
+wait 48
+midi A0 26 44
+wait 48
+midi A0 26 33
+wait 48
+midi A0 26 22
+wait 48
+midi A0 26 11
+wait 8
+midi 90 26 52
+midi 90 45 4E
+wait 36
+midi A0 26 00
+wait 18
+midi 80 26 00
+wait 88
+midi 80 45 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 52
+midi 90 45 4E
+wait 146
+midi 80 45 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 68
+midi 90 3E 62
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 6C
+midi 90 3E 66
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 38
+midi 90 41 44
+wait 58
+midi 80 41 00
+wait 88
+midi 90 48 40
+wait 58
+midi 80 48 00
+wait 88
+midi 90 26 50
+midi 90 45 4C
+wait 146
+midi 80 45 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 50
+midi 90 45 4C
+wait 146
+midi 80 45 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 66
+midi 90 3E 60
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 64
+midi 90 3E 5E
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 45 3E
+wait 118
+midi 80 45 00
+wait 478
+midi 90 45 3E
+wait 118
+midi 80 45 00
+wait 478
+midi 90 3E 4C
+wait 88
+midi 80 3E 00
+wait 508
+midi 90 3E 4E
+wait 88
+midi 80 3E 00
+wait 208
+midi 90 41 32
+wait 58
+midi 80 41 00
+wait 88
+midi 90 48 2E
+wait 58
+midi 80 48 00
+wait 88
+midi 90 26 52
+midi 90 45 4E
+wait 146
+midi 80 45 00
+wait 108
+midi 80 26 00
+wait 338
+midi 90 26 54
+midi 90 45 50
+wait 146
+midi 80 45 00
+wait 108
+midi 80 26 00
+wait 38
+midi 90 26 58
+midi 90 3E 52
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 38
+midi 90 26 70
+wait 88
+midi A0 26 16
+wait 48
+midi A0 26 2C
+wait 48
+midi A0 26 42
+wait 48
+midi A0 26 58
+wait 48
+midi A0 26 6E
+wait 48
+midi A0 26 5E
+wait 48
+midi A0 26 4E
+wait 48
+midi A0 26 3E
+wait 48
+midi A0 26 2F
+wait 48
+midi A0 26 1F
+wait 48
+midi A0 26 0F
+wait 8
+# tihai: dha te-te, dha te-te, dha, three times, landing on sam with a long bend
+midi 90 26 6C
+midi 90 3E 66
+wait 36
+midi A0 26 00
+wait 18
+midi 80 26 00
+wait 88
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 38
+midi 90 41 3C
+wait 58
+midi 80 41 00
+wait 88
+midi 90 48 38
+wait 58
+midi 80 48 00
+wait 88
+midi 90 26 6C
+midi 90 3E 66
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 38
+midi 90 41 3C
+wait 58
+midi 80 41 00
+wait 88
+midi 90 48 38
+wait 58
+midi 80 48 00
+wait 88
+midi 90 26 6C
+midi 90 3E 66
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 38
+midi 90 26 6C
+midi 90 3E 66
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 38
+midi 90 41 3C
+wait 58
+midi 80 41 00
+wait 88
+midi 90 48 38
+wait 58
+midi 80 48 00
+wait 88
+midi 90 26 6C
+midi 90 3E 66
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 38
+midi 90 41 3C
+wait 58
+midi 80 41 00
+wait 88
+midi 90 48 38
+wait 58
+midi 80 48 00
+wait 88
+midi 90 26 6C
+midi 90 3E 66
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 38
+midi 90 26 6C
+midi 90 3E 66
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 38
+midi 90 41 3C
+wait 58
+midi 80 41 00
+wait 88
+midi 90 48 38
+wait 58
+midi 80 48 00
+wait 88
+midi 90 26 6C
+midi 90 3E 66
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 38
+midi 90 41 3C
+wait 58
+midi 80 41 00
+wait 88
+midi 90 48 38
+wait 58
+midi 80 48 00
+wait 88
+midi 90 26 6C
+midi 90 3E 66
+wait 146
+midi 80 3E 00
+wait 108
+midi 80 26 00
+wait 38
+# sam
+midi 90 26 7C
+midi 90 3E 70
+wait 136
+midi A0 26 19
+wait 8
+midi 80 3E 00
+wait 88
+midi A0 26 32
+wait 98
+midi A0 26 4C
+wait 98
+midi A0 26 65
+wait 98
+midi A0 26 7F
+wait 198
+midi A0 26 6C
+wait 198
+midi A0 26 5A
+wait 198
+midi A0 26 48
+wait 198
+midi A0 26 36
+wait 198
+midi A0 26 24
+wait 198
+midi A0 26 12
+wait 198
+midi A0 26 00
+wait 158
+midi 80 26 00
+wait 1898
+wav24stop
+expect nan 0
+expect peakq <8104001
+metrics

@@ -1,0 +1,636 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 demo 02 (spec §8.4): HANDPAN groove. The steel shell carved harmonic (CARVE 85): a D minor groove at 96 BPM in
+# sixteenths, played in over MIDI (D3 A3 C4 D4 E4 F4 G4 A4 C5), eight bars with a little swing, then the ding and
+# a held chord that poly aftertouch leans on, then lets ring. About 27 s.
+# TITLE: Handpan groove
+# ABOUT: A steel handpan carved to fundamental, octave and fifth, played as a D minor groove at 96 BPM over USB-MIDI, ending on a chord bent up by aftertouch.
+#   tools/render_demos.sh renders it: build/demos/02_handpan_groove.wav (24-bit), .mp3 and .gif (the screen every 250 ms)
+shotmode 1
+master 4096
+wait 1700
+tour 0
+preset 2
+wait 400
+wav24 out:02_handpan_groove.wav
+wait 300
+# bar 1 (A)
+midi 90 32 6E
+wait 108
+midi 80 32 00
+wait 200
+midi 90 39 3E
+wait 108
+midi 80 39 00
+wait 59
+midi 90 3C 32
+wait 108
+midi 80 3C 00
+wait 30
+midi 90 3E 58
+wait 108
+midi 80 3E 00
+wait 200
+midi 90 39 38
+wait 108
+midi 80 39 00
+wait 59
+midi 90 41 48
+wait 108
+midi 80 41 00
+wait 30
+midi 90 32 64
+wait 108
+midi 80 32 00
+wait 200
+midi 90 40 3E
+wait 108
+midi 80 40 00
+wait 59
+midi 90 3E 36
+wait 108
+midi 80 3E 00
+wait 30
+midi 90 45 52
+wait 108
+midi 80 45 00
+wait 200
+midi 90 41 3E
+wait 108
+midi 80 41 00
+wait 59
+midi 90 40 2E
+wait 108
+midi 80 40 00
+wait 30
+# bar 2 (B)
+midi 90 32 70
+wait 108
+midi 80 32 00
+wait 58
+midi 90 39 28
+wait 108
+midi 80 39 00
+wait 30
+midi 90 3C 42
+wait 108
+midi 80 3C 00
+wait 201
+midi 90 41 56
+wait 108
+midi 80 41 00
+wait 58
+midi 90 40 32
+wait 108
+midi 80 40 00
+wait 30
+midi 90 3E 3E
+wait 108
+midi 80 3E 00
+wait 201
+midi 90 32 60
+wait 108
+midi 80 32 00
+wait 58
+midi 90 39 2C
+wait 108
+midi 80 39 00
+wait 30
+midi 90 45 4C
+wait 108
+midi 80 45 00
+wait 201
+midi 90 48 58
+wait 108
+midi 80 48 00
+wait 58
+midi 90 45 38
+wait 108
+midi 80 45 00
+wait 30
+midi 90 43 3E
+wait 108
+midi 80 43 00
+wait 59
+midi 90 41 34
+wait 108
+midi 80 41 00
+wait 30
+# bar 3 (A)
+midi 90 32 6E
+wait 108
+midi 80 32 00
+wait 200
+midi 90 39 3E
+wait 108
+midi 80 39 00
+wait 59
+midi 90 3C 32
+wait 108
+midi 80 3C 00
+wait 30
+midi 90 3E 58
+wait 108
+midi 80 3E 00
+wait 200
+midi 90 39 38
+wait 108
+midi 80 39 00
+wait 59
+midi 90 41 48
+wait 108
+midi 80 41 00
+wait 30
+midi 90 32 64
+wait 108
+midi 80 32 00
+wait 200
+midi 90 40 3E
+wait 108
+midi 80 40 00
+wait 59
+midi 90 3E 36
+wait 108
+midi 80 3E 00
+wait 30
+midi 90 45 52
+wait 108
+midi 80 45 00
+wait 200
+midi 90 41 3E
+wait 108
+midi 80 41 00
+wait 59
+midi 90 40 2E
+wait 108
+midi 80 40 00
+wait 30
+# bar 4 (C)
+midi 90 32 70
+wait 108
+midi 80 32 00
+wait 200
+midi 90 39 3C
+wait 108
+midi 80 39 00
+wait 59
+midi 90 3C 34
+wait 108
+midi 80 3C 00
+wait 30
+midi 90 3E 5A
+wait 108
+midi 80 3E 00
+wait 200
+midi 90 41 46
+wait 108
+midi 80 41 00
+wait 59
+midi 90 40 38
+wait 108
+midi 80 40 00
+wait 30
+midi 90 48 64
+wait 108
+midi 80 48 00
+wait 58
+midi 90 45 50
+wait 108
+midi 80 45 00
+wait 30
+midi 90 43 4A
+wait 108
+midi 80 43 00
+wait 59
+midi 90 41 46
+wait 108
+midi 80 41 00
+wait 30
+midi 90 40 48
+wait 108
+midi 80 40 00
+wait 58
+midi 90 3E 4A
+wait 108
+midi 80 3E 00
+wait 30
+midi 90 3C 4E
+wait 108
+midi 80 3C 00
+wait 59
+midi 90 39 54
+wait 108
+midi 80 39 00
+wait 30
+# bar 5 (A)
+midi 90 32 6E
+wait 108
+midi 80 32 00
+wait 200
+midi 90 39 3E
+wait 108
+midi 80 39 00
+wait 59
+midi 90 3C 32
+wait 108
+midi 80 3C 00
+wait 30
+midi 90 3E 58
+wait 108
+midi 80 3E 00
+wait 200
+midi 90 39 38
+wait 108
+midi 80 39 00
+wait 59
+midi 90 41 48
+wait 108
+midi 80 41 00
+wait 30
+midi 90 32 64
+wait 108
+midi 80 32 00
+wait 200
+midi 90 40 3E
+wait 108
+midi 80 40 00
+wait 59
+midi 90 3E 36
+wait 108
+midi 80 3E 00
+wait 30
+midi 90 45 52
+wait 108
+midi 80 45 00
+wait 200
+midi 90 41 3E
+wait 108
+midi 80 41 00
+wait 59
+midi 90 40 2E
+wait 108
+midi 80 40 00
+wait 30
+# bar 6 (B)
+midi 90 32 70
+wait 108
+midi 80 32 00
+wait 58
+midi 90 39 28
+wait 108
+midi 80 39 00
+wait 30
+midi 90 3C 42
+wait 108
+midi 80 3C 00
+wait 201
+midi 90 41 56
+wait 108
+midi 80 41 00
+wait 58
+midi 90 40 32
+wait 108
+midi 80 40 00
+wait 30
+midi 90 3E 3E
+wait 108
+midi 80 3E 00
+wait 201
+midi 90 32 60
+wait 108
+midi 80 32 00
+wait 58
+midi 90 39 2C
+wait 108
+midi 80 39 00
+wait 30
+midi 90 45 4C
+wait 108
+midi 80 45 00
+wait 201
+midi 90 48 58
+wait 108
+midi 80 48 00
+wait 58
+midi 90 45 38
+wait 108
+midi 80 45 00
+wait 30
+midi 90 43 3E
+wait 108
+midi 80 43 00
+wait 59
+midi 90 41 34
+wait 108
+midi 80 41 00
+wait 30
+# bar 7 (D)
+midi 90 32 74
+wait 108
+midi 80 32 00
+wait 513
+midi 90 3E 50
+wait 108
+midi 80 3E 00
+wait 200
+midi 90 39 3A
+wait 108
+midi 80 39 00
+wait 201
+midi 90 32 68
+wait 108
+midi 80 32 00
+wait 371
+midi 90 41 46
+wait 108
+midi 80 41 00
+wait 30
+midi 90 40 42
+wait 108
+midi 80 40 00
+wait 200
+midi 90 3E 3C
+wait 108
+midi 80 3E 00
+wait 201
+# bar 8 (C)
+midi 90 32 70
+wait 108
+midi 80 32 00
+wait 200
+midi 90 39 3C
+wait 108
+midi 80 39 00
+wait 59
+midi 90 3C 34
+wait 108
+midi 80 3C 00
+wait 30
+midi 90 3E 5A
+wait 108
+midi 80 3E 00
+wait 200
+midi 90 41 46
+wait 108
+midi 80 41 00
+wait 59
+midi 90 40 38
+wait 108
+midi 80 40 00
+wait 30
+midi 90 48 64
+wait 108
+midi 80 48 00
+wait 58
+midi 90 45 50
+wait 108
+midi 80 45 00
+wait 30
+midi 90 43 4A
+wait 108
+midi 80 43 00
+wait 59
+midi 90 41 46
+wait 108
+midi 80 41 00
+wait 30
+midi 90 40 48
+wait 108
+midi 80 40 00
+wait 58
+midi 90 3E 4A
+wait 108
+midi 80 3E 00
+wait 30
+midi 90 3C 4E
+wait 108
+midi 80 3C 00
+wait 59
+midi 90 39 54
+wait 108
+midi 80 39 00
+wait 30
+# the ding and a D minor chord, held; poly aftertouch leans on all four: TENSION bends them up, PALM half-mutes
+midi 90 32 70
+midi 90 39 50
+midi 90 3E 52
+midi 90 41 4E
+wait 492
+midi A0 32 00
+midi A0 39 00
+midi A0 3E 00
+midi A0 41 00
+wait 92
+midi A0 32 02
+midi A0 39 02
+midi A0 3E 02
+midi A0 41 02
+wait 92
+midi A0 32 05
+midi A0 39 05
+midi A0 3E 05
+midi A0 41 05
+wait 92
+midi A0 32 07
+midi A0 39 07
+midi A0 3E 07
+midi A0 41 07
+wait 92
+midi A0 32 09
+midi A0 39 09
+midi A0 3E 09
+midi A0 41 09
+wait 92
+midi A0 32 0C
+midi A0 39 0C
+midi A0 3E 0C
+midi A0 41 0C
+wait 92
+midi A0 32 0E
+midi A0 39 0E
+midi A0 3E 0E
+midi A0 41 0E
+wait 92
+midi A0 32 10
+midi A0 39 10
+midi A0 3E 10
+midi A0 41 10
+wait 92
+midi A0 32 13
+midi A0 39 13
+midi A0 3E 13
+midi A0 41 13
+wait 92
+midi A0 32 15
+midi A0 39 15
+midi A0 3E 15
+midi A0 41 15
+wait 92
+midi A0 32 17
+midi A0 39 17
+midi A0 3E 17
+midi A0 41 17
+wait 92
+midi A0 32 1A
+midi A0 39 1A
+midi A0 3E 1A
+midi A0 41 1A
+wait 92
+midi A0 32 1C
+midi A0 39 1C
+midi A0 3E 1C
+midi A0 41 1C
+wait 92
+midi A0 32 1E
+midi A0 39 1E
+midi A0 3E 1E
+midi A0 41 1E
+wait 92
+midi A0 32 21
+midi A0 39 21
+midi A0 3E 21
+midi A0 41 21
+wait 92
+midi A0 32 23
+midi A0 39 23
+midi A0 3E 23
+midi A0 41 23
+wait 92
+midi A0 32 25
+midi A0 39 25
+midi A0 3E 25
+midi A0 41 25
+wait 92
+midi A0 32 28
+midi A0 39 28
+midi A0 3E 28
+midi A0 41 28
+wait 92
+midi A0 32 2A
+midi A0 39 2A
+midi A0 3E 2A
+midi A0 41 2A
+wait 92
+midi A0 32 2C
+midi A0 39 2C
+midi A0 3E 2C
+midi A0 41 2C
+wait 92
+midi A0 32 2F
+midi A0 39 2F
+midi A0 3E 2F
+midi A0 41 2F
+wait 92
+midi A0 32 31
+midi A0 39 31
+midi A0 3E 31
+midi A0 41 31
+wait 92
+midi A0 32 33
+midi A0 39 33
+midi A0 3E 33
+midi A0 41 33
+wait 92
+midi A0 32 36
+midi A0 39 36
+midi A0 3E 36
+midi A0 41 36
+wait 92
+midi A0 32 38
+midi A0 39 38
+midi A0 3E 38
+midi A0 41 38
+wait 92
+midi A0 32 3A
+midi A0 39 3A
+midi A0 3E 3A
+midi A0 41 3A
+wait 92
+midi A0 32 3D
+midi A0 39 3D
+midi A0 3E 3D
+midi A0 41 3D
+wait 92
+midi A0 32 3F
+midi A0 39 3F
+midi A0 3E 3F
+midi A0 41 3F
+wait 92
+midi A0 32 41
+midi A0 39 41
+midi A0 3E 41
+midi A0 41 41
+wait 92
+midi A0 32 44
+midi A0 39 44
+midi A0 3E 44
+midi A0 41 44
+wait 92
+midi A0 32 46
+midi A0 39 46
+midi A0 3E 46
+midi A0 41 46
+wait 92
+midi A0 32 46
+midi A0 39 46
+midi A0 3E 46
+midi A0 41 46
+wait 92
+midi A0 32 3F
+midi A0 39 3F
+midi A0 3E 3F
+midi A0 41 3F
+wait 92
+midi A0 32 38
+midi A0 39 38
+midi A0 3E 38
+midi A0 41 38
+wait 92
+midi A0 32 31
+midi A0 39 31
+midi A0 3E 31
+midi A0 41 31
+wait 92
+midi A0 32 2A
+midi A0 39 2A
+midi A0 3E 2A
+midi A0 41 2A
+wait 92
+midi A0 32 23
+midi A0 39 23
+midi A0 3E 23
+midi A0 41 23
+wait 92
+midi A0 32 1C
+midi A0 39 1C
+midi A0 3E 1C
+midi A0 41 1C
+wait 92
+midi A0 32 15
+midi A0 39 15
+midi A0 3E 15
+midi A0 41 15
+wait 92
+midi A0 32 0E
+midi A0 39 0E
+midi A0 3E 0E
+midi A0 41 0E
+wait 92
+midi A0 32 07
+midi A0 39 07
+midi A0 3E 07
+midi A0 41 07
+wait 92
+midi A0 32 00
+midi A0 39 00
+midi A0 3E 00
+midi A0 41 00
+wait 192
+midi 80 32 00
+midi 80 39 00
+midi 80 3E 00
+midi 80 41 00
+wait 2192
+wav24stop
+expect nan 0
+expect peakq <8104001
+metrics

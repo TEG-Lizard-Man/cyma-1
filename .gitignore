@@ -1,0 +1,5 @@
+instrument/build/
+instrument/dist/
+__pycache__/
+.DS_Store
+*.fwsc

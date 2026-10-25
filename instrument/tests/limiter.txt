@@ -1,0 +1,383 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 limiter (spec §3.10.5, §3.11, §8.2). The look-ahead limiter reaches the gain a peak needs as the peak
+# arrives, so nothing may pass -0.3 dBFS: peakq <= 8,104,000, whatever is thrown at it. Two kinds of render:
+#   limiter_drive.wav, limiter_rain.wav   the spec's case: eight fortissimo voices into DRIVE 24 (the bowl struck
+#        and leaned on; the thunder sheet rained on as hard as it goes). DRIVE's makeup gain holds a -18 dBFS
+#        signal at its level and its curve saturates near 1 x makeup (about -17 dBFS at 24 dB), so these prove
+#        the ceiling and the drive, not the limiter's action
+#   limiter_hammer.wav, limiter_kick.wav  no drive, LEVEL +6, room off: eight keys struck at 127 six times
+#        over (re-strikes add, spec §3.6) and leaned on; then the kick at OCT-2 with its lows tilted up. These
+#        are there to drive the limiter: tools/golden.py wants at least one above -1 dBFS (7,471,000) and both
+#        under the ceiling. The kick's pitch-drop transients get there (its expect below says so); whether the
+#        bowl does depends on the gain staging (spec §3.11: about -18 dBFS a strike), reported on its own
+# MASTER is after the limiter (spec §3.11): full here.
+#   instrument/build/host/cyma-1_host instrument/tests/limiter.txt OUTDIR
+master 4096
+wait 1700
+tour 0
+#
+# ---- 01 SINGING BOWL, DRIVE 24, LEVEL +6: eight keys at 127, leaned on (the spec's case)
+preset 1
+param DRIVE 24
+param LEVEL 6
+wait 400
+peakreset
+wav24 out:limiter_drive.wav
+wait 200
+key 0 down 127
+key 4 down 127
+key 7 down 127
+key 9 down 127
+key 12 down 127
+key 14 down 127
+key 16 down 127
+key 19 down 127
+wait 400
+press_all 127
+wait 2500
+key 0 up
+key 4 up
+key 7 up
+key 9 up
+key 12 up
+key 14 up
+key 16 up
+key 19 up
+wait 1000
+wav24stop
+expect peakq <8104001
+expect nan 0
+press REC
+wait 600
+release REC
+wait 200
+#
+# ---- 18 THUNDER SHEET, DRIVE 24, DENSITY 100: rained on with every key leaned in (the spec's case)
+preset 18
+param DRIVE 24
+param DENSITY 100
+param LEVEL 6
+wait 300
+peakreset
+wav24 out:limiter_rain.wav
+wait 200
+key 0 down 127
+key 4 down 127
+key 7 down 127
+key 9 down 127
+key 12 down 127
+key 14 down 127
+key 16 down 127
+key 19 down 127
+wait 400
+press_all 127
+wait 3000
+key 0 up
+key 4 up
+key 7 up
+key 9 up
+key 12 up
+key 14 up
+key 16 up
+key 19 up
+wait 1000
+wav24stop
+expect peakq <8104001
+expect nan 0
+press REC
+wait 600
+release REC
+wait 200
+#
+# ---- 01 SINGING BOWL, no drive, LEVEL +6, the room off (all of it dry): eight keys hammered six times, leaned on
+preset 1
+param DRIVE 0
+param LEVEL 6
+param ROOM 0
+wait 400
+peakreset
+wav24 out:limiter_hammer.wav
+wait 200
+key 0 down 127
+key 4 down 127
+key 7 down 127
+key 9 down 127
+key 12 down 127
+key 14 down 127
+key 16 down 127
+key 19 down 127
+wait 70
+key 0 up
+key 4 up
+key 7 up
+key 9 up
+key 12 up
+key 14 up
+key 16 up
+key 19 up
+wait 40
+key 0 down 127
+key 4 down 127
+key 7 down 127
+key 9 down 127
+key 12 down 127
+key 14 down 127
+key 16 down 127
+key 19 down 127
+wait 70
+key 0 up
+key 4 up
+key 7 up
+key 9 up
+key 12 up
+key 14 up
+key 16 up
+key 19 up
+wait 40
+key 0 down 127
+key 4 down 127
+key 7 down 127
+key 9 down 127
+key 12 down 127
+key 14 down 127
+key 16 down 127
+key 19 down 127
+wait 70
+key 0 up
+key 4 up
+key 7 up
+key 9 up
+key 12 up
+key 14 up
+key 16 up
+key 19 up
+wait 40
+key 0 down 127
+key 4 down 127
+key 7 down 127
+key 9 down 127
+key 12 down 127
+key 14 down 127
+key 16 down 127
+key 19 down 127
+wait 70
+key 0 up
+key 4 up
+key 7 up
+key 9 up
+key 12 up
+key 14 up
+key 16 up
+key 19 up
+wait 40
+key 0 down 127
+key 4 down 127
+key 7 down 127
+key 9 down 127
+key 12 down 127
+key 14 down 127
+key 16 down 127
+key 19 down 127
+wait 70
+key 0 up
+key 4 up
+key 7 up
+key 9 up
+key 12 up
+key 14 up
+key 16 up
+key 19 up
+wait 40
+key 0 down 127
+key 4 down 127
+key 7 down 127
+key 9 down 127
+key 12 down 127
+key 14 down 127
+key 16 down 127
+key 19 down 127
+wait 70
+key 0 up
+key 4 up
+key 7 up
+key 9 up
+key 12 up
+key 14 up
+key 16 up
+key 19 up
+wait 40
+key 0 down 127
+key 4 down 127
+key 7 down 127
+key 9 down 127
+key 12 down 127
+key 14 down 127
+key 16 down 127
+key 19 down 127
+wait 300
+press_all 127
+wait 2000
+key 0 up
+key 4 up
+key 7 up
+key 9 up
+key 12 up
+key 14 up
+key 16 up
+key 19 up
+wait 1200
+wav24stop
+expect peakq <8104001
+expect nan 0
+press REC
+wait 600
+release REC
+wait 200
+#
+# ---- 16 MEMBRANE KICK at OCT-2, its DRIVE off, LEVEL +6, TILT -6 (its lows up), the room off: hammered, eight
+# at a time, six times over
+preset 16
+param DRIVE 0
+param LEVEL 6
+param TILT -6
+param ROOM 0
+tap OCT-
+tap OCT-
+wait 300
+peakreset
+wav24 out:limiter_kick.wav
+wait 200
+key 0 down 127
+key 2 down 127
+key 4 down 127
+key 5 down 127
+key 7 down 127
+key 9 down 127
+key 11 down 127
+key 12 down 127
+wait 70
+key 0 up
+key 2 up
+key 4 up
+key 5 up
+key 7 up
+key 9 up
+key 11 up
+key 12 up
+wait 40
+key 0 down 127
+key 2 down 127
+key 4 down 127
+key 5 down 127
+key 7 down 127
+key 9 down 127
+key 11 down 127
+key 12 down 127
+wait 70
+key 0 up
+key 2 up
+key 4 up
+key 5 up
+key 7 up
+key 9 up
+key 11 up
+key 12 up
+wait 40
+key 0 down 127
+key 2 down 127
+key 4 down 127
+key 5 down 127
+key 7 down 127
+key 9 down 127
+key 11 down 127
+key 12 down 127
+wait 70
+key 0 up
+key 2 up
+key 4 up
+key 5 up
+key 7 up
+key 9 up
+key 11 up
+key 12 up
+wait 40
+key 0 down 127
+key 2 down 127
+key 4 down 127
+key 5 down 127
+key 7 down 127
+key 9 down 127
+key 11 down 127
+key 12 down 127
+wait 70
+key 0 up
+key 2 up
+key 4 up
+key 5 up
+key 7 up
+key 9 up
+key 11 up
+key 12 up
+wait 40
+key 0 down 127
+key 2 down 127
+key 4 down 127
+key 5 down 127
+key 7 down 127
+key 9 down 127
+key 11 down 127
+key 12 down 127
+wait 70
+key 0 up
+key 2 up
+key 4 up
+key 5 up
+key 7 up
+key 9 up
+key 11 up
+key 12 up
+wait 40
+key 0 down 127
+key 2 down 127
+key 4 down 127
+key 5 down 127
+key 7 down 127
+key 9 down 127
+key 11 down 127
+key 12 down 127
+wait 70
+key 0 up
+key 2 up
+key 4 up
+key 5 up
+key 7 up
+key 9 up
+key 11 up
+key 12 up
+wait 40
+key 0 down 127
+key 2 down 127
+key 4 down 127
+key 5 down 127
+key 7 down 127
+key 9 down 127
+key 11 down 127
+key 12 down 127
+wait 1500
+key 0 up
+key 2 up
+key 4 up
+key 5 up
+key 7 up
+key 9 up
+key 11 up
+key 12 up
+wait 800
+wav24stop
+expect peakq <8104001
+expect peakq >7471000
+expect nan 0
+tap OCT+
+tap OCT+
+expect octave 0
+metrics

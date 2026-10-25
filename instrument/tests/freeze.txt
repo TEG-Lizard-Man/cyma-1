@@ -1,0 +1,88 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 FREEZE (spec §3.4, §5.3, §8.2): a chord held forever must neither die nor grow. The slots sounding when
+# PLAY is pressed take r = 0.9999999; an energy governor holds each under 2x its energy at the freeze (+3 dB).
+# Two 20 s freezes, with the room off so the level is the plate's own:
+#   freeze_mallet.wav  a struck chord, released once frozen
+#   freeze_bow.wav     a bowed chord that keeps being bowed, and leaned on, for 10 s of the freeze: the governor's
+#                      real test, since the bow keeps pouring energy in
+# tools/golden.py takes 1 s RMS windows between the marks: none more than 3.5 dB over the loudest of the first two
+# seconds of the freeze, and the last two seconds no more than 10 dB under them (it held).
+#   instrument/build/host/cyma-1_host instrument/tests/freeze.txt OUTDIR
+master 4096
+wait 1700
+tour 0
+#
+# ---- a struck chord, F3 A3 C4
+preset 1
+param ROOM 0
+wait 400
+peakreset
+wav24 out:freeze_mallet.wav
+wait 200
+key 0 down 90
+key 4 down 90
+key 7 down 90
+wait 800
+tap PLAY
+expect frozen 1
+expect ledb_PLAYG 3
+key 0 up
+key 4 up
+key 7 up
+#@mark freeze_mallet_start
+wait 20000
+#@mark freeze_mallet_end
+expect frozen 1
+expect nan 0
+expect peakq <8104001
+expect voices >2
+# a new note over the drone is an ordinary one: it rings and decays
+key 12 down 100
+wait 100
+key 12 up
+wait 1500
+tap PLAY
+expect frozen 0
+expect ledb_PLAYG 0
+wait 2000
+wav24stop
+press REC
+wait 600
+release REC
+#
+# ---- a bowed chord, C4 E4 G4, still bowed (and leaned on) through the first half of the freeze
+preset 9
+param ROOM 0
+wait 400
+peakreset
+wav24 out:freeze_bow.wav
+wait 200
+key 7 down 90
+key 11 down 90
+key 14 down 90
+wait 300
+press_all 60
+wait 1700
+tap PLAY
+expect frozen 1
+#@mark freeze_bow_start
+press_all 127
+wait 4000
+press_all 30
+wait 3000
+press_all 127
+wait 3000
+key 7 up
+key 11 up
+key 14 up
+wait 10000
+#@mark freeze_bow_end
+expect frozen 1
+expect nan 0
+expect peakq <8104001
+tap PLAY
+expect frozen 0
+wait 3000
+wav24stop
+expect nan 0
+metrics

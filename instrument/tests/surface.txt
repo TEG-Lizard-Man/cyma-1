@@ -1,0 +1,112 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 SURFACE (spec §3.7, §5.4, §5.5, §8.2): SEQ turns the keybed into one plate. Keys strike their own point
+# on it (velocity >= 24) or only touch it (below 24: a point damper, no strike); the key LEDs become the live
+# vibration map, so the keys on nodal lines go dark. The map is printed ("leds": # bright, + dim or mid, . dark)
+# after every gesture; tools/golden.py's "#@leds_any" wants at least one of them with 3 or more keys dark while 3
+# or more others are lit (spec §8.2: the nodal map shows, which it does once a few modes dominate, not in the first
+# instant of a strike that rings every mode). It also checks that a light touch never sounds a new strike (the
+# level just after it is no higher than just before it).
+#   instrument/build/host/cyma-1_host instrument/tests/surface.txt OUTDIR
+master 4096
+wait 1700
+tour 0
+# from the boot preset: SEQ toggles the key mode (and marks the preset edited)
+tap SEQ
+expect keymode 1
+expect ledb_SEQ 3
+expect edited 1
+tap SEQ
+expect keymode 0
+# preset 22 SURFACE GONG starts in SURFACE
+preset 22
+wait 400
+expect keymode 1
+expect ledb_SEQ 3
+peakreset
+wav24 out:surface.wav
+wait 200
+#@leds_any dark>=3 lit>=3
+# ---- strikes: a centre key booms, an edge key shimmers
+#@mark surf_centre
+key 9 down 100
+wait 80
+key 9 up
+wait 1400
+#@mark surf_edge
+key 26 down 100
+wait 80
+key 26 up
+wait 1400
+# ---- a strike off the centre, then the map once the high modes have died away
+#@mark surf_strike
+key 4 down 110
+wait 80
+key 4 up
+wait 1500
+leds
+expect ledb_SEQ 3
+# ---- light touches (velocity 10, pressure 30): a damper at that point, never a strike. A touch on a dark key
+# keeps only the modes with a node there: the flageolet harmonics
+#@mark surf_touch1
+key 12 down 10 30
+wait 600
+leds
+key 12 up
+wait 300
+#@mark surf_touch2
+key 16 down 10 30
+wait 600
+leds
+key 16 up
+wait 300
+#@mark surf_touch3
+key 2 down 10 30
+wait 600
+leds
+key 2 up
+wait 600
+leds
+# ---- strike again and lean on the struck key: its pressure damps its own point
+key 14 down 100
+wait 300
+key 14 down 100 80
+wait 900
+key 14 up
+wait 800
+leds
+wait 1500
+leds
+# ---- OCT moves the surface root (C3 + 12 x octave): a deeper gong
+tap OCT-
+expect octave -1
+key 9 down 120
+wait 80
+key 9 up
+wait 1500
+leds
+wait 1500
+leds
+tap OCT+
+expect octave 0
+# ---- MIDI notes map to keys (key = note - 53 - 12 x octave); notes off the keybed are ignored
+midi 90 3C 64
+wait 80
+midi 80 3C 00
+midi 90 20 64
+wait 80
+midi 80 20 00
+wait 1200
+wav24stop
+expect nan 0
+expect peakq <8104001
+expect peakq >265271
+# ---- SEQ back to TUNED: the keys play notes again
+tap SEQ
+expect keymode 0
+expect ledb_SEQ 1
+key 7 down 100
+wait 300
+key 7 up
+wait 300
+expect nan 0
+metrics

@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 smoke (spec §8.2): boot, a key, the main controls, expects, two shots and a 24-bit capture. The quick check
+# that the build runs at all; tests/controls.txt is the thorough one. Run it from the project root:
+#   instrument/build/host/cyma-1_host instrument/tests/smoke.txt instrument/build/out
+# (tools/golden.py runs every scenario; lines starting "#@" are its notes, plain comments to the simulator.)
+wait 600
+shot boot.png
+wait 1100
+tour 0
+expect page 0
+expect preset 1
+expect keymode 0
+expect exciter 0
+expect octave 0
+expect ledb_HOME 3
+expect ledb_ENV 1
+wav24 out:smoke.wav
+#@mark smoke_on
+key 7 down 100
+wait 50
+expect ledk7 2
+expect voices 1
+key 7 down 100 80
+wait 600
+key 7 up
+wait 50
+# let go: ringing (1) or, on a short preset, already silent (0)
+expect ledk7 <2
+tap ENV
+expect page 1
+expect ledb_ENV 3
+press SEL
+wait 30
+expect layer 1
+expect ledb_SEL 3
+release SEL
+wait 30
+expect layer 0
+turn ALGO 1
+expect exciter 1
+turn PRESET 1
+wait 600
+expect preset 2
+tap OCT+
+expect octave 1
+tap PLAY
+expect frozen 1
+expect ledb_PLAYG 3
+tap PLAY
+expect frozen 0
+tap SEQ
+expect keymode 1
+expect ledb_SEQ 3
+tap EDIT
+expect view 1
+param DECAY 2.5
+wait 30
+expect edited 1
+budget 64
+wait 30
+expect budget 64
+wav24stop
+expect nan 0
+expect peakq <8104001
+demo_hash 1
+metrics
+perf
+shot end.png

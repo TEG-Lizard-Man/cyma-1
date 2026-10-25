@@ -1,0 +1,108 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 storage fixes (fix-app): the edit buffer survives a reboot (settings v2); the tour counts as seen at the
+# second boot; SAVE + HOME at power-on resets the settings; a flash that cannot be written says so once; a USB
+# backup restores the user bank; a bank of another format is locked, never overwritten.
+master 4096
+wait 1700
+expect tour 1
+expect set_version 2
+tour 0
+# ---- edits, then 35 s of quiet: the autosave keeps them; the reboot brings them back, still edits
+spin K1 4
+tap FX
+spin K2 10
+wait 100
+expect edited 1
+expect setdirty >0
+wait 35000
+expect setdirty 0
+reboot
+wait 1700
+expect tour 0
+expect tour_done 1
+expect preset 1
+expect edited 1
+expect p_ROOM 4500
+# REVERT still gives the stored sound
+press SEL
+tap SAVE
+release SEL
+wait 400
+expect edited 0
+expect p_ROOM 3500
+# ---- a browse's kept edits survive too
+tap FX
+spin K2 6
+wait 100
+turn PRESET 1 200
+wait 400
+expect loaded 2
+expect mem 1
+wait 35000
+reboot
+wait 1700
+expect loaded 2
+expect edited 0
+expect mem 1
+turn PRESET -1 200
+wait 400
+expect loaded 1
+expect edited 1
+expect p_ROOM 4100
+# ---- SAVE writes the boot preset at once: a reboot right after comes back on the saved slot
+tap SAVE
+tap SAVE
+wait 300
+expect preset 25
+reboot
+wait 1700
+expect preset 25
+expect edited 0
+# ---- SAVE + HOME held at power-on: the settings to their defaults (the bank kept)
+tap OCT+
+expect octave 1
+press SAVE
+press HOME
+reboot
+wait 300
+release SAVE
+release HOME
+wait 1700
+expect preset 1
+expect octave 0
+expect user1 1
+expect save_state 0
+expect setdirty >0
+tour 0
+# ---- a flash that cannot be written: said once, then retried less and less often
+flash_fail 1
+tap OCT+
+wait 40000
+expect set_fails 1
+wait 40000
+expect set_fails 1
+wait 30000
+expect set_fails 2
+flash_fail 0
+wait 125000
+expect set_fails 0
+expect setdirty 0
+tap OCT-
+# ---- backup and restore over USB: U01 comes back
+backup out:bank.bin
+preset 25
+spin K1 8
+tap SAVE
+tap SAVE
+wait 300
+expect user1 1
+press REC
+wait 3000
+release REC
+wait 3000
+restore out:bank.bin
+wait 100
+expect restore_rc 0
+expect user1 1
+expect bank_locked 0
+expect nan 0

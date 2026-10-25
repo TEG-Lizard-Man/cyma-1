@@ -1,0 +1,16 @@
+name = "CYMA-1"
+id_prefix = "FM-1_94"          # not in the taken list (900, 91N, 920, 93N, 97N, 99N)
+usb_manufacturer = "CYMA"
+usb_product = "CYMA-1 FM-1"
+o2 = ["src/*.c"]
+words = "words.tsv"
+ble = false
+mirror = false
+backup = true                  # the settings and user presets over USB (app.h APP_BACKUP_*)
+usb_audio_in = true            # the FM-1 recordable over USB
+usb_audio_out = false          # no computer audio through the FM-1: uac_play adds it after the limiter unclamped,
+                               # so a loud host stream wrapped the 24-bit DAC word (and it frees 8 KB of RAM)
+gen = ["tools/gen_fonts.py {gen}/cy_fonts.h"]
+tagline = "a playable Chladni plate"
+licence = "MPL-2.0"
+credits = "Built on fm1-base (MPL-2.0). Barlow and Terminus fonts (SIL OFL 1.1)."

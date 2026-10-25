@@ -1,0 +1,425 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 screens (spec §6, §8.2): a PNG of every state the screen has. shotmode 1 makes the sand deterministic, so
+# a shot is the same on every run. tools/contact_sheet.py lays them out in name order (the sNN_ prefix).
+# Splash at 300 / 900 / 1500 ms; every page x layer (and EXCITE for each exciter); the three views; the focus
+# pill (numeric and enum); the SHAPE / PRESET / EXCITER readouts; the SAVE dialog; the morph scrubber; the tour
+# steps 1-5; FROZEN; SURFACE; BOW and RAIN at work; PHOSPHOR; reduced motion; a gallery of the shapes; and, last, the
+# states where overlays meet: a tour chip with a hint or a readout, a long edited name with a badge, BOW with a footer
+# message, MESH on the top key, FIELD and MESH on the glass star.
+#   instrument/build/host/cyma-1_host instrument/tests/screens.txt OUTDIR
+shotmode 1
+wait 300
+shot s01_splash_0300.png
+wait 600
+shot s02_splash_0900.png
+wait 600
+shot s03_splash_1500.png
+wait 600
+tour 0
+master 4096
+wait 200
+shot s04_idle.png
+# ---- a strike: ripples, the sand jumping, the ladder and meters
+key 7 down 100
+wait 150
+shot s05_strike_150ms.png
+wait 450
+shot s06_strike_600ms.png
+key 7 up
+wait 1400
+shot s07_strike_2s.png
+# ---- every page x layer
+tap HOME
+wait 200
+shot s10_page_plate_a.png
+press SEL
+wait 250
+shot s11_page_plate_b.png
+release SEL
+tap ENV
+wait 200
+shot s12_page_excite_mallet_a.png
+press SEL
+wait 250
+shot s13_page_excite_mallet_b.png
+release SEL
+tap FX
+wait 200
+shot s14_page_space_a.png
+press SEL
+wait 250
+shot s15_page_space_b.png
+release SEL
+tap LFO
+wait 200
+shot s16_page_motion_a.png
+press SEL
+wait 250
+shot s17_page_motion_b.png
+release SEL
+tap GLO
+wait 200
+shot s18_page_global_a.png
+press SEL
+wait 250
+shot s19_page_global_b.png
+release SEL
+tap HOME
+wait 1500
+# ---- EXCITE for BOW and RAIN (the knobs follow the exciter); the ALGORITHM readout on the way
+tap ENV
+turn ALGO 1
+wait 200
+shot s20_readout_exciter_bow.png
+wait 1500
+shot s21_page_excite_bow_a.png
+press SEL
+wait 250
+shot s22_page_excite_bow_b.png
+release SEL
+turn ALGO 1
+wait 1500
+shot s23_page_excite_rain_a.png
+turn ALGO 1
+wait 1500
+tap HOME
+# ---- the three views, with a note sounding
+key 7 down 100
+wait 300
+shot s30_view_sand.png
+tap EDIT
+wait 500
+shot s31_view_field.png
+tap EDIT
+wait 500
+shot s32_view_mesh.png
+key 7 up
+wait 1500
+shot s33_view_mesh_later.png
+tap EDIT
+wait 1500
+# ---- the focus pill: numeric (DECAY: hero numerals) and enum (TARGET)
+turn K4 2
+wait 250
+shot s40_focus_numeric.png
+wait 1600
+press SEL
+turn K1 1
+wait 250
+shot s41_focus_enum.png
+release SEL
+wait 1600
+turn K2 3
+wait 250
+shot s42_focus_numeric_stiffness.png
+wait 1600
+# ---- readouts at the plate's foot: SHAPE (mid-morph), PRESET
+turn SELECT 6
+wait 250
+shot s43_readout_shape.png
+wait 1600
+turn PRESET 1
+wait 60
+shot s44_readout_preset.png
+wait 1600
+shot s45_preset_02_handpan.png
+# ---- the SAVE dialog (a factory preset, edited: SAVE TO U01?), then cancelled
+turn K1 1
+wait 1400
+tap SAVE
+wait 200
+shot s46_save_dialog.png
+tap HOME
+wait 1400
+# ---- the morph scrubber: SEL+PRESETS from 02 toward 03
+press SEL
+turn PRESET 6
+wait 200
+shot s47_morph_scrub.png
+turn PRESET -6
+wait 100
+release SEL
+wait 1500
+turn PRESET -1
+wait 1600
+# ---- the tour, steps 1-5
+tour 1
+wait 400
+shot s50_tour_1_key.png
+tour 2
+wait 400
+shot s51_tour_2_lean.png
+tour 3
+wait 400
+shot s52_tour_3_select.png
+tour 4
+wait 400
+shot s53_tour_4_algo.png
+tour 5
+wait 400
+shot s54_tour_5_presets.png
+tour 0
+wait 400
+# ---- FROZEN: a chord, frozen (the ice tint)
+key 0 down 90
+key 4 down 90
+key 7 down 90
+wait 500
+tap PLAY
+key 0 up
+key 4 up
+key 7 up
+wait 800
+shot s60_frozen.png
+tap PLAY
+wait 200
+press REC
+wait 600
+release REC
+wait 1200
+# ---- LATCH and DAMP badges
+tap ARP
+key 9 down 100
+wait 400
+shot s61_latched.png
+key 9 up
+tap ARP
+press REC
+wait 300
+shot s62_damping.png
+release REC
+wait 1200
+# ---- SURFACE: the keybed is one gong (preset 22): a strike, then a light touch
+preset 22
+wait 400
+key 9 down 100
+wait 80
+key 9 up
+wait 400
+shot s63_surface_strike.png
+key 16 down 10 30
+wait 300
+shot s64_surface_touch.png
+key 16 up
+wait 1200
+shot s65_surface_ringing.png
+# ---- BOW at work (09 BOWED GLASS PAD, leaned on) and RAIN (08 STEEL RAIN, pouring)
+preset 9
+wait 400
+key 7 down 100
+wait 300
+press_all 100
+wait 1500
+shot s66_bow.png
+key 7 up
+press REC
+wait 600
+release REC
+preset 8
+wait 400
+key 7 down 100
+wait 300
+press_all 127
+wait 1200
+shot s67_rain.png
+key 7 up
+press REC
+wait 600
+release REC
+wait 1200
+# ---- PHOSPHOR theme and reduced motion
+preset 1
+param THEME 1
+wait 300
+key 7 down 100
+wait 400
+shot s70_phosphor.png
+key 7 up
+wait 1500
+shot s71_phosphor_ringing.png
+param THEME 0
+param MOTION 1
+wait 300
+key 7 down 100
+wait 400
+shot s72_reduced_motion.png
+key 7 up
+wait 1500
+param MOTION 0
+# ---- the shapes: one strike on a preset of each (DRUM CIRCLE HEX SQUARE TRIANGLE STAR GUITAR STADIUM BAR)
+preset 2
+wait 300
+key 7 down 100
+wait 700
+key 7 up
+wait 300
+shot s80_shape_drum_handpan.png
+preset 8
+wait 300
+key 7 down 100
+wait 300
+press_all 90
+wait 700
+key 7 up
+wait 300
+shot s81_shape_hex_steel_rain.png
+preset 14
+wait 300
+key 7 down 100
+wait 700
+key 7 up
+wait 300
+shot s82_shape_square_felt.png
+preset 11
+wait 300
+key 7 down 100
+wait 700
+key 7 up
+wait 300
+shot s83_shape_triangle_prism.png
+preset 3
+wait 300
+key 7 down 100
+wait 700
+key 7 up
+wait 300
+shot s84_shape_star_lotus.png
+preset 12
+wait 300
+key 7 down 100
+wait 700
+key 7 up
+wait 300
+shot s85_shape_guitar.png
+preset 13
+wait 300
+key 7 down 100
+wait 300
+press_all 90
+wait 700
+key 7 up
+wait 300
+shot s86_shape_stadium_chaos.png
+preset 4
+wait 300
+key 7 down 100
+wait 700
+key 7 up
+wait 300
+shot s87_shape_bar_marimba.png
+preset 7
+wait 300
+tap OCT-
+key 7 down 120
+wait 1200
+key 7 up
+tap OCT+
+wait 300
+shot s88_shape_circle_gong.png
+# ---- where overlays meet (review ui-3..ui-6, ui-18). Shot last, so every shot above keeps the state it always had;
+# the sNN names put each one beside its family in the contact sheet.
+# a tour chip with the knob hint up (K3 is the one knob not touched yet, so its hint shows), then the PRESETS readout
+preset 1
+wait 400
+tap HOME
+wait 200
+tour 1
+wait 300
+turn K3 1
+wait 150
+shot s55_tour_1_hint.png
+turn PRESET 1
+wait 60
+shot s55_tour_1_readout.png
+wait 1600
+turn PRESET -1
+wait 1600
+# the last tour chip with the ALGORITHM readout beside it (a full turn: back to MALLET)
+tour 5
+wait 300
+turn ALGO 1
+wait 150
+shot s56_tour_5_algo_readout.png
+turn ALGO 2
+wait 1600
+tour 0
+wait 400
+# a long preset name, edited (the dot) under the plain footer, then with the octave badge
+preset 16
+wait 400
+turn K4 1
+wait 1800
+shot s49_edited_long_name.png
+tap OCT+
+wait 150
+shot s49_octave_long_name.png
+tap OCT-
+wait 1600
+# BOW with a footer message (FROZEN)
+preset 9
+wait 400
+key 7 down 100
+wait 300
+press_all 100
+wait 800
+tap PLAY
+wait 150
+shot s24_bow_footer_message.png
+tap PLAY
+key 7 up
+press REC
+wait 600
+release REC
+wait 1200
+# MESH on the highest key (its pitch tag at the edge)
+preset 1
+wait 400
+tap EDIT
+tap EDIT
+wait 300
+key 26 down 100
+wait 500
+shot s34_view_mesh_high_note.png
+key 26 up
+tap EDIT
+press REC
+wait 600
+release REC
+wait 1200
+# FIELD and MESH on glass and the STAR (03 GLASS LOTUS)
+preset 3
+wait 400
+key 7 down 100
+wait 300
+tap EDIT
+wait 500
+shot s35_view_field_star_glass.png
+tap EDIT
+wait 500
+shot s36_view_mesh_star_glass.png
+key 7 up
+tap EDIT
+wait 1500
+expect nan 0
+# the USB transfer's footer (CYMA-1 Sounds, spec §6.6): HELLO, PUT_EDIT SINGING BOWL (FROM USB, then the auditioned
+# sound), PUT_SLOT U05 and COMMIT (the question), then HOME (nothing changed). Every frame is verbatim from
+# tests/sounds/vectors.json
+preset 2
+wait 400
+sysex F07D43590101010104481C18252DF7
+sysex F07D435901030301020440426154244E0E2572740808214F2E310200040000000030664C1933000040680400000040664C7D7F5F1913211D326634664C19334D19692339141C33260000000050660C264E664C1933166133010018330600380000522A2E3306000000000400607F7F000000002013353D4D2C1C04F7
+wait 200
+shot s89_usb_from_usb.png
+wait 1600
+shot s89_usb_auditioned.png
+sysex F07D435901050404020440426154244E0E2572740808214F2E310200040000000030664C1933000040680400000040664C7D7F5F1913211D326634664C19334D19692339141C33260000000050660C264E664C1933166133010018330600380000522A2E3306000000000400607F7F000000002013756218410B03F7
+sysex F07D4359010806000E390A1B18F7
+wait 300
+shot s89_usb_question.png
+tap HOME
+wait 200
+shot s89_usb_nothing_changed.png
+wait 1500
+expect sx_result 64
+expect user_writes 0
+expect nan 0

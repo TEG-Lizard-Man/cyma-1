@@ -1,0 +1,709 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 bow sweep (spec §3.6, §8.2): the friction junction across its whole range. FORCE {0, 25, 50, 100} %
+# x pressure {0, 32, 64, 127} (press_all, the 0..127 of poly aftertouch) on F3, C4, C5 and G5, from preset 09
+# BOWED GLASS PAD with the room off (so one cell's tail never props up the next) and DAMPER 100.
+# Each cell: the key lands at velocity 100, the lean comes 100 ms later and holds 1.9 s; then REC (DAMP) clears
+# the plate for 0.5 s. tools/golden.py checks every cell: no NaN, RMS <= -3 dBFS while bowed, and RMS >= -30 dBFS
+# from 1 s on wherever FORCE >= 50 and pressure >= 64. G5 (key 26) is on the top row, which senses velocity only:
+# its bow pressure is velocity x swell whatever the lean (spec §3.6 P_eff), so its rows repeat by design.
+#   instrument/build/host/cyma-1_host instrument/tests/bow_sweep.txt OUTDIR
+master 4096
+wait 1700
+tour 0
+preset 9
+wait 400
+param ROOM 0
+param DAMPER 100
+wait 400
+expect exciter 1
+#
+# ---- F3 (key 0)
+peakreset
+wav24 out:bow_F3.wav
+wait 200
+param FORCE 0
+#@mark bow_F3_f0_p0
+key 0 down 100
+wait 100
+press_all 0
+wait 1900
+key 0 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_F3_f0_p32
+key 0 down 100
+wait 100
+press_all 32
+wait 1900
+key 0 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_F3_f0_p64
+key 0 down 100
+wait 100
+press_all 64
+wait 1900
+key 0 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_F3_f0_p127
+key 0 down 100
+wait 100
+press_all 127
+wait 1900
+key 0 up
+press REC
+wait 500
+release REC
+wait 100
+param FORCE 25
+#@mark bow_F3_f25_p0
+key 0 down 100
+wait 100
+press_all 0
+wait 1900
+key 0 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_F3_f25_p32
+key 0 down 100
+wait 100
+press_all 32
+wait 1900
+key 0 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_F3_f25_p64
+key 0 down 100
+wait 100
+press_all 64
+wait 1900
+key 0 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_F3_f25_p127
+key 0 down 100
+wait 100
+press_all 127
+wait 1900
+key 0 up
+press REC
+wait 500
+release REC
+wait 100
+param FORCE 50
+#@mark bow_F3_f50_p0
+key 0 down 100
+wait 100
+press_all 0
+wait 1900
+key 0 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_F3_f50_p32
+key 0 down 100
+wait 100
+press_all 32
+wait 1900
+key 0 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_F3_f50_p64
+key 0 down 100
+wait 100
+press_all 64
+wait 1900
+key 0 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_F3_f50_p127
+key 0 down 100
+wait 100
+press_all 127
+wait 1900
+key 0 up
+press REC
+wait 500
+release REC
+wait 100
+param FORCE 100
+#@mark bow_F3_f100_p0
+key 0 down 100
+wait 100
+press_all 0
+wait 1900
+key 0 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_F3_f100_p32
+key 0 down 100
+wait 100
+press_all 32
+wait 1900
+key 0 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_F3_f100_p64
+key 0 down 100
+wait 100
+press_all 64
+wait 1900
+key 0 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_F3_f100_p127
+key 0 down 100
+wait 100
+press_all 127
+wait 1900
+key 0 up
+press REC
+wait 500
+release REC
+wait 100
+wav24stop
+expect nan 0
+expect peakq <8104001
+#
+# ---- C4 (key 7)
+peakreset
+wav24 out:bow_C4.wav
+wait 200
+param FORCE 0
+#@mark bow_C4_f0_p0
+key 7 down 100
+wait 100
+press_all 0
+wait 1900
+key 7 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C4_f0_p32
+key 7 down 100
+wait 100
+press_all 32
+wait 1900
+key 7 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C4_f0_p64
+key 7 down 100
+wait 100
+press_all 64
+wait 1900
+key 7 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C4_f0_p127
+key 7 down 100
+wait 100
+press_all 127
+wait 1900
+key 7 up
+press REC
+wait 500
+release REC
+wait 100
+param FORCE 25
+#@mark bow_C4_f25_p0
+key 7 down 100
+wait 100
+press_all 0
+wait 1900
+key 7 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C4_f25_p32
+key 7 down 100
+wait 100
+press_all 32
+wait 1900
+key 7 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C4_f25_p64
+key 7 down 100
+wait 100
+press_all 64
+wait 1900
+key 7 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C4_f25_p127
+key 7 down 100
+wait 100
+press_all 127
+wait 1900
+key 7 up
+press REC
+wait 500
+release REC
+wait 100
+param FORCE 50
+#@mark bow_C4_f50_p0
+key 7 down 100
+wait 100
+press_all 0
+wait 1900
+key 7 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C4_f50_p32
+key 7 down 100
+wait 100
+press_all 32
+wait 1900
+key 7 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C4_f50_p64
+key 7 down 100
+wait 100
+press_all 64
+wait 1900
+key 7 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C4_f50_p127
+key 7 down 100
+wait 100
+press_all 127
+wait 1900
+key 7 up
+press REC
+wait 500
+release REC
+wait 100
+param FORCE 100
+#@mark bow_C4_f100_p0
+key 7 down 100
+wait 100
+press_all 0
+wait 1900
+key 7 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C4_f100_p32
+key 7 down 100
+wait 100
+press_all 32
+wait 1900
+key 7 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C4_f100_p64
+key 7 down 100
+wait 100
+press_all 64
+wait 1900
+key 7 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C4_f100_p127
+key 7 down 100
+wait 100
+press_all 127
+wait 1900
+key 7 up
+press REC
+wait 500
+release REC
+wait 100
+wav24stop
+expect nan 0
+expect peakq <8104001
+#
+# ---- C5 (key 19)
+peakreset
+wav24 out:bow_C5.wav
+wait 200
+param FORCE 0
+#@mark bow_C5_f0_p0
+key 19 down 100
+wait 100
+press_all 0
+wait 1900
+key 19 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C5_f0_p32
+key 19 down 100
+wait 100
+press_all 32
+wait 1900
+key 19 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C5_f0_p64
+key 19 down 100
+wait 100
+press_all 64
+wait 1900
+key 19 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C5_f0_p127
+key 19 down 100
+wait 100
+press_all 127
+wait 1900
+key 19 up
+press REC
+wait 500
+release REC
+wait 100
+param FORCE 25
+#@mark bow_C5_f25_p0
+key 19 down 100
+wait 100
+press_all 0
+wait 1900
+key 19 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C5_f25_p32
+key 19 down 100
+wait 100
+press_all 32
+wait 1900
+key 19 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C5_f25_p64
+key 19 down 100
+wait 100
+press_all 64
+wait 1900
+key 19 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C5_f25_p127
+key 19 down 100
+wait 100
+press_all 127
+wait 1900
+key 19 up
+press REC
+wait 500
+release REC
+wait 100
+param FORCE 50
+#@mark bow_C5_f50_p0
+key 19 down 100
+wait 100
+press_all 0
+wait 1900
+key 19 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C5_f50_p32
+key 19 down 100
+wait 100
+press_all 32
+wait 1900
+key 19 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C5_f50_p64
+key 19 down 100
+wait 100
+press_all 64
+wait 1900
+key 19 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C5_f50_p127
+key 19 down 100
+wait 100
+press_all 127
+wait 1900
+key 19 up
+press REC
+wait 500
+release REC
+wait 100
+param FORCE 100
+#@mark bow_C5_f100_p0
+key 19 down 100
+wait 100
+press_all 0
+wait 1900
+key 19 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C5_f100_p32
+key 19 down 100
+wait 100
+press_all 32
+wait 1900
+key 19 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C5_f100_p64
+key 19 down 100
+wait 100
+press_all 64
+wait 1900
+key 19 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_C5_f100_p127
+key 19 down 100
+wait 100
+press_all 127
+wait 1900
+key 19 up
+press REC
+wait 500
+release REC
+wait 100
+wav24stop
+expect nan 0
+expect peakq <8104001
+#
+# ---- G5 (key 26)
+peakreset
+wav24 out:bow_G5.wav
+wait 200
+param FORCE 0
+#@mark bow_G5_f0_p0
+key 26 down 100
+wait 100
+press_all 0
+wait 1900
+key 26 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_G5_f0_p32
+key 26 down 100
+wait 100
+press_all 32
+wait 1900
+key 26 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_G5_f0_p64
+key 26 down 100
+wait 100
+press_all 64
+wait 1900
+key 26 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_G5_f0_p127
+key 26 down 100
+wait 100
+press_all 127
+wait 1900
+key 26 up
+press REC
+wait 500
+release REC
+wait 100
+param FORCE 25
+#@mark bow_G5_f25_p0
+key 26 down 100
+wait 100
+press_all 0
+wait 1900
+key 26 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_G5_f25_p32
+key 26 down 100
+wait 100
+press_all 32
+wait 1900
+key 26 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_G5_f25_p64
+key 26 down 100
+wait 100
+press_all 64
+wait 1900
+key 26 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_G5_f25_p127
+key 26 down 100
+wait 100
+press_all 127
+wait 1900
+key 26 up
+press REC
+wait 500
+release REC
+wait 100
+param FORCE 50
+#@mark bow_G5_f50_p0
+key 26 down 100
+wait 100
+press_all 0
+wait 1900
+key 26 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_G5_f50_p32
+key 26 down 100
+wait 100
+press_all 32
+wait 1900
+key 26 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_G5_f50_p64
+key 26 down 100
+wait 100
+press_all 64
+wait 1900
+key 26 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_G5_f50_p127
+key 26 down 100
+wait 100
+press_all 127
+wait 1900
+key 26 up
+press REC
+wait 500
+release REC
+wait 100
+param FORCE 100
+#@mark bow_G5_f100_p0
+key 26 down 100
+wait 100
+press_all 0
+wait 1900
+key 26 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_G5_f100_p32
+key 26 down 100
+wait 100
+press_all 32
+wait 1900
+key 26 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_G5_f100_p64
+key 26 down 100
+wait 100
+press_all 64
+wait 1900
+key 26 up
+press REC
+wait 500
+release REC
+wait 100
+#@mark bow_G5_f100_p127
+key 26 down 100
+wait 100
+press_all 127
+wait 1900
+key 26 up
+press REC
+wait 500
+release REC
+wait 100
+wav24stop
+expect nan 0
+expect peakq <8104001
+#
+expect nan 0
+metrics

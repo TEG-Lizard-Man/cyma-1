@@ -1,0 +1,301 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 performance (spec §3.13-3.14, §6.9, §8.2). The engine's worst cases, three times:
+#   1. the device's default configuration (mode budget 96), the worst without the bow; then "metrics": the device
+#      figure (est_max <= 2,900)
+#   2. the host's (budget 128), the same worst case, long enough (> 17 s) that the UI's last 1024 frame times are
+#      all of it, animating; then "perf" (native UI: median <= 350 us, p99 <= 700 us with 2000 grains) and
+#      "metrics" (est_max <= 3,500)
+#   3. four bowed voices (the bow's maximum) on top, host config; then "metrics" again: reported, not gated (spec
+#      §3.14 counts the bow junction on top of the no-bow worst, under the device's governor)
+# The no-bow worst: eight struck voices held and leaned on with DRIVE, vibrato and the LFO melting the shape (every
+# slot refreshing its coefficients each sub-block), SURFACE strikes over them (the ninth slot), rain on every key.
+# est_max is the engine's model of native instructions a sample (spec §3.13), not a measurement; the UI times are
+# this machine's wall clock, meaningful only on an otherwise quiet machine. tools/golden.py reads the lines:
+#   perf ui_med_us ui_p99_us ui_max_us render_med_us render_max_us est_max
+#   instrument/build/host/cyma-1_host instrument/tests/perf.txt OUTDIR
+master 4096
+wait 1700
+tour 0
+#
+# ================= 1. device default config: budget 96, the no-bow worst
+budget 96
+wait 50
+expect budget 96
+preset 1
+param DRIVE 12
+param VIBRATO 20
+param MORPH 30
+param LFO_RATE 2
+param LFO_WAVE 0
+wait 300
+key 0 down 120
+key 2 down 120
+key 4 down 120
+key 7 down 120
+key 9 down 120
+key 12 down 120
+key 14 down 120
+key 16 down 120
+wait 300
+press_all 110
+wait 2000
+key 0 up
+key 2 up
+key 4 up
+key 7 up
+key 9 up
+key 12 up
+key 14 up
+key 16 up
+key 1 down 127
+key 3 down 127
+key 5 down 127
+key 8 down 127
+key 10 down 127
+key 13 down 127
+key 15 down 127
+key 17 down 127
+wait 200
+key 1 up
+key 3 up
+key 5 up
+key 8 up
+key 10 up
+key 13 up
+key 15 up
+key 17 up
+tap SEQ
+key 9 down 120
+wait 60
+key 9 up
+wait 100
+key 4 down 110
+wait 60
+key 4 up
+wait 100
+key 21 down 120
+wait 60
+key 21 up
+wait 100
+key 14 down 100
+wait 60
+key 14 up
+wait 100
+key 0 down 110
+wait 60
+key 0 up
+wait 100
+key 26 down 100
+wait 60
+key 26 up
+wait 100
+tap SEQ
+preset 13
+param DRIVE 12
+wait 300
+key 0 down 120
+key 4 down 120
+key 7 down 120
+key 9 down 120
+key 12 down 120
+key 14 down 120
+key 16 down 120
+key 19 down 120
+wait 300
+press_all 127
+wait 2000
+key 0 up
+key 4 up
+key 7 up
+key 9 up
+key 12 up
+key 14 up
+key 16 up
+key 19 up
+wait 300
+preset 1
+param DRIVE 12
+param VIBRATO 20
+param MORPH 30
+param LFO_RATE 2
+param LFO_WAVE 0
+wait 200
+key 0 down 120
+key 2 down 120
+key 4 down 120
+key 7 down 120
+key 9 down 120
+key 12 down 120
+key 14 down 120
+key 16 down 120
+wait 300
+press_all 110
+wait 1000
+key 0 up
+key 2 up
+key 4 up
+key 7 up
+key 9 up
+key 12 up
+key 14 up
+key 16 up
+wait 300
+echo perf-pass device budget 96, no bow
+metrics
+expect nan 0
+press REC
+wait 600
+release REC
+#
+# ================= 2. host config: budget 128, the same, long enough to fill the UI timing ring
+budget 128
+wait 50
+expect budget 128
+preset 1
+param DRIVE 12
+param VIBRATO 20
+param MORPH 30
+param LFO_RATE 2
+param LFO_WAVE 0
+wait 300
+key 0 down 120
+key 2 down 120
+key 4 down 120
+key 7 down 120
+key 9 down 120
+key 12 down 120
+key 14 down 120
+key 16 down 120
+wait 300
+press_all 110
+wait 5000
+key 0 up
+key 2 up
+key 4 up
+key 7 up
+key 9 up
+key 12 up
+key 14 up
+key 16 up
+key 1 down 127
+key 3 down 127
+key 5 down 127
+key 8 down 127
+key 10 down 127
+key 13 down 127
+key 15 down 127
+key 17 down 127
+wait 200
+key 1 up
+key 3 up
+key 5 up
+key 8 up
+key 10 up
+key 13 up
+key 15 up
+key 17 up
+tap SEQ
+key 9 down 120
+wait 60
+key 9 up
+wait 300
+key 4 down 110
+wait 60
+key 4 up
+wait 300
+key 21 down 120
+wait 60
+key 21 up
+wait 300
+key 14 down 100
+wait 60
+key 14 up
+wait 300
+key 0 down 110
+wait 60
+key 0 up
+wait 300
+key 26 down 100
+wait 60
+key 26 up
+wait 300
+tap SEQ
+preset 13
+param DRIVE 12
+wait 300
+key 0 down 120
+key 4 down 120
+key 7 down 120
+key 9 down 120
+key 12 down 120
+key 14 down 120
+key 16 down 120
+key 19 down 120
+wait 300
+press_all 127
+wait 6000
+key 0 up
+key 4 up
+key 7 up
+key 9 up
+key 12 up
+key 14 up
+key 16 up
+key 19 up
+wait 300
+preset 1
+param DRIVE 12
+param VIBRATO 20
+param MORPH 30
+param LFO_RATE 2
+param LFO_WAVE 0
+wait 200
+key 0 down 120
+key 2 down 120
+key 4 down 120
+key 7 down 120
+key 9 down 120
+key 12 down 120
+key 14 down 120
+key 16 down 120
+wait 300
+press_all 110
+wait 3000
+key 0 up
+key 2 up
+key 4 up
+key 7 up
+key 9 up
+key 12 up
+key 14 up
+key 16 up
+wait 300
+echo perf-pass host budget 128, no bow
+perf
+metrics
+expect nan 0
+press REC
+wait 600
+release REC
+#
+# ================= 3. host config, four bowed voices leaned on hard (reported, not gated)
+preset 9
+param DRIVE 12
+param VIBRATO 20
+wait 300
+key 0 down 110
+key 7 down 110
+key 12 down 110
+key 19 down 110
+wait 300
+press_all 127
+wait 4000
+key 0 up
+key 7 up
+key 12 up
+key 19 up
+wait 300
+echo perf-pass host budget 128, with 4 bowed voices
+metrics
+expect nan 0
+expect budget 128
