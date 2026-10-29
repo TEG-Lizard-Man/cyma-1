@@ -1,0 +1,111 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 demo 11: SAND, then FIELD, then MESH (EDIT), on the frozen gong drone of demo 06.
+# TITLE: Three views of one gong
+# ABOUT: One gong drone shown three ways: the sand settling on the nodal lines, the FIELD of the plate's live displacement, then the MESH surface, the same vibration each time.
+#   tools/render_demos.sh renders it: build/demos/11_three_views_gong.wav (24-bit), .mp3 and .gif (the screen every 250 ms)
+shotmode 1
+master 4096
+wait 1700
+tour 0
+preset 7
+wait 400
+wav24 out:11_three_views_gong.wav
+wait 300
+# the cathedral gong, low: C2, G2, E flat 3. BLOOM -35: the pitch rises as each one decays
+midi 90 24 70
+wait 248
+midi 80 24 00
+wait 2248
+midi 90 2B 5C
+wait 248
+midi 80 2B 00
+wait 1948
+midi 90 33 54
+wait 248
+midi 80 33 00
+wait 2148
+# PLAY: FREEZE. The three gongs hold, the plate goes ice-blue
+tap PLAY
+wait 1120
+# a melody over the drone, on the same gong an octave and more up: these ring and decay as usual
+midi 90 43 46
+wait 248
+midi 80 43 00
+wait 1148
+midi 90 46 40
+wait 248
+midi 80 46 00
+wait 948
+midi 90 48 48
+# switch view (EDIT): sand > field > mesh > sand
+tap EDIT
+wait 248
+midi 80 48 00
+wait 1348
+midi 90 4B 3C
+wait 198
+# SELECT, eight detents toward HEX and back: the frozen partials glide with the plate
+turn SELECT 1 1
+wait 49
+midi 80 4B 00
+wait 398
+turn SELECT 1 1
+wait 449
+turn SELECT 1 1
+wait 449
+turn SELECT 1 1
+wait 49
+midi 90 4A 42
+wait 248
+midi 80 4A 00
+wait 148
+turn SELECT 1 1
+wait 449
+turn SELECT 1 1
+wait 349
+midi 90 46 3C
+wait 98
+turn SELECT 1 1
+wait 149
+midi 80 46 00
+wait 298
+turn SELECT 1 1
+wait 1049
+midi 90 43 46
+wait 248
+midi 80 43 00
+wait 1548
+turn SELECT -1 1
+wait 299
+turn SELECT -1 1
+wait 99
+midi 90 3F 3A
+wait 198
+turn SELECT -1 1
+wait 49
+midi 80 3F 00
+wait 248
+turn SELECT -1 1
+wait 299
+turn SELECT -1 1
+wait 299
+turn SELECT -1 1
+wait 299
+turn SELECT -1 1
+wait 299
+turn SELECT -1 1
+wait 1299
+# PLAY again: the drone is let go and rings down
+tap PLAY
+# switch view (EDIT): sand > field > mesh > sand
+tap EDIT
+wait 4020
+# REC held: DAMP, a palm on the gong
+press REC
+wait 1198
+release REC
+wait 2298
+wav24stop
+expect nan 0
+expect peakq <8104001
+metrics

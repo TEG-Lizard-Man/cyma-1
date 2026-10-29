@@ -23,6 +23,28 @@ These are frames of the real 240×240 device UI, rendered by the same C code tha
 
 [Every plate shape and its first eight vibration patterns](media/plates-and-modes.png) is the reference sheet the engine is checked against: the sand lands on the white nodal lines.
 
+### Three ways to see the sound (EDIT)
+
+Press **EDIT** to switch between three views of the same vibration. All three read the same mode tables and energies as the audio engine, so what you see is what you hear.
+
+![The same gong as SAND, FIELD and MESH](media/three-views.png)
+
+- **SAND:** the grains are thrown off the moving parts of the plate and settle on the nodal lines, as in Chladni's own experiment.
+- **FIELD:** the plate's live displacement. One half of each vibration pattern glows warm and the other cool, and the nodal lines, where the plate stands still, are drawn in ink.
+- **MESH:** the plate as a slowly turning 3-D wireframe lifted by the vibration, slowed down so the eye can follow it. The `x1/370` tag is the slow-motion factor.
+
+| FIELD: circle to star | MESH: handpan groove | One gong, three views |
+|---|---|---|
+| ![FIELD view during the circle-to-star morph](media/field-view-morph.gif) | ![MESH view on the handpan groove](media/mesh-view-handpan.gif) | ![SAND, then FIELD, then MESH on one gong](media/three-views-gong.gif) |
+
+### Two colour themes (GLOBAL › THEME)
+
+**CYMATIC** is the default. **PHOSPHOR** redraws everything, including the sand, the field, the mesh and the plate marks, in the tones of a green CRT.
+
+![PHOSPHOR theme: sand, field and mesh on the bowed glass square](media/phosphor-views.png)
+
+![PHOSPHOR theme on the bowed glass square](media/phosphor-bowed-glass.gif)
+
 ## What's a Chladni plate?
 
 In 1787 the physicist and musician Ernst Chladni scattered sand on a thin brass plate and drew a violin bow along its edge. The plate rang, and the sand jumped into a sharp geometric figure.
