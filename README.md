@@ -8,6 +8,21 @@ Each key strikes, bows or rains on a virtual metal plate. The sand on the 240×2
 - SELECT morphs the plate from a circle through hexagon, star, guitar and bar;
 - SEQ turns the keybed itself into the plate.
 
+## Screens
+
+These are frames of the real 240×240 device UI, rendered by the same C code that runs on the FM-1 (the browser build and the hardware draw identical pixels).
+
+| | | |
+|---|---|---|
+| ![Handpan: steel plate, sand on the nodal rings](media/screen-handpan.png) | ![Singing bowl, leaning in](media/screen-singing-bowl.png) | ![Steel rain](media/screen-steel-rain.png) |
+| **02 HANDPAN**: sand on the nodal rings of a steel plate | **01 SINGING BOWL**: pressing harder bows harder | **04 STEEL RAIN**: the rain exciter |
+
+| Morphing the plate from circle to star | Steel rain swells |
+|---|---|
+| ![Circle-to-star morph](media/morph-circle-to-star.gif) | ![Steel rain swells](media/steel-rain.gif) |
+
+[Every plate shape and its first eight vibration patterns](media/plates-and-modes.png) is the reference sheet the engine is checked against: the sand lands on the white nodal lines.
+
 ## What's a Chladni plate?
 
 In 1787 the physicist and musician Ernst Chladni scattered sand on a thin brass plate and drew a violin bow along its edge. The plate rang, and the sand jumped into a sharp geometric figure.
@@ -60,7 +75,9 @@ To play:
 | `instrument/` | The CYMA-1 app (MPL-2.0): C engine (`src/`), UI (`ui/`), browser page (`web/emu/`), tests and tools |
 | `docs/` | The packaged browser build (static files) |
 | `reference/fm1-base` | [fm1-base](https://github.com/charlesvestal/fm1-base) (MPL-2.0), as a git submodule: the platform layer, simulator and build tools |
-| `tools/build_device.sh` | Device build in the pinned JieLi toolchain container (built, never flashed) |
+| `tools/build_device.sh` | Device build in the pinned JieLi toolchain container |
+| `media/` | Screenshots and animations of the device UI |
+| `notes/` | The install runbook, the FM-1 hardware atlas and the next release's spec |
 
 ## Build
 
@@ -84,6 +101,18 @@ Full details are in `instrument/BUILDING.md`.
   - back up the unit's full flash;
   - keep the official V15 image for recovery;
   - have the RP2040 "Transporter" recovery dongle ready.
+
+## Milestones
+
+| Date | Milestone |
+|---|---|
+| 2026-10-24 | Built in one night by agent teams. Research covered about 45 community repos and the chip's own documents. A design contest of 5 concepts and 3 judges picked the Chladni plate, 8 agents built the modules in parallel, and an adversarial review confirmed 115 findings (98 fixed, 13 partly fixed) before release. |
+| 2026-10-24 | The browser version plays the same C code compiled to WebAssembly. |
+| 2026-10-24 | **Sounds**: save, restore, export and share sounds as short codes, and send them to the FM-1 over USB-MIDI. A hardening round followed. |
+| 2026-10-28 | **Hardware prep**: a safety re-check of the firmware, a byte-for-byte reproducible rebuild, the Mac recovery tools vetted, and a step-by-step install runbook ([notes/CYMA-1-install-runbook.md](notes/CYMA-1-install-runbook.md)). |
+| 2026-10-28 | **Hardware atlas**: the FM-1 mapped down to the chip, from silicon blocks and all 48 pins to the board, the stock firmware and its protocols. A skeptic agent checked every claim, and 42 earlier community claims were corrected ([notes/FM-1-hardware-atlas.md](notes/FM-1-hardware-atlas.md)). |
+| 2026-10-28 | **Next release designed**: VOICE, the talking plate (your voice over USB shapes the plate's resonances), and export as an Ableton instrument ([notes/CYMA-1-voice-spec.md](notes/CYMA-1-voice-spec.md)). |
+| 2026-10-29 | **First install on a real FM-1.** A full flash backup was taken from macOS through the chip's ROM mode, with two identical reads; as far as we know, the first report of that route working on an M4 Mac with macOS 26. The install took about 2 minutes. On hardware, the colour screen, the smooth frame rate, all 27 keys, pressure, the CPU meter, saving, and the USB Sounds and backup tools all work. Tag `v1.0-hw`. |
 
 ## Credits
 
