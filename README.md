@@ -39,6 +39,8 @@ Press **EDIT** to switch between three views of the same vibration. All three re
 
 ### Two colour themes (GLOBAL › THEME)
 
+To switch: press **GLO**, then **hold SEL** (Shift in the browser) and, while holding it, **turn K1**. THEME is on the GLOBAL page's layer B, which only shows while SEL is held. Let go and the theme stays; it is saved with your settings.
+
 **CYMATIC** is the default. **PHOSPHOR** redraws everything, including the sand, the field, the mesh and the plate marks, in the tones of a green CRT.
 
 ![PHOSPHOR theme: sand, field and mesh on the bowed glass square](media/phosphor-views.png)
