@@ -140,6 +140,11 @@ Full details are in `instrument/BUILDING.md`.
 
 ## Credits
 
+- Produced by **Team EG** & **Lizard_Man**.
 - Built on [fm1-base](https://github.com/charlesvestal/fm1-base) by Charles Vestal, which builds on Leo Kuroshita's felucca-bsp (MPL-2.0).
 - Fonts: Barlow and Terminus (SIL OFL 1.1).
 - CYMA-1 is MPL-2.0.
+
+## Names and logos
+
+The source code is MPL-2.0 (see `LICENSE`). The names **Team EG**, **Lizard_Man** and **CYMA-1**, and their logos and boot artwork, are not licensed under MPL-2.0. Forks are welcome, under a different name, and without suggesting that Team EG or Lizard_Man made or endorse them.
