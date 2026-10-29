@@ -78,7 +78,8 @@ Full details are in `instrument/BUILDING.md`.
 ## Status and safety
 
 - Verified in the native simulator, the browser build, and the JieLi chip emulator.
-- **Not yet run on a real FM-1.** No firmware package (`.fwsc`) is included in this repo.
+- **Runs on a real FM-1** (first install 2026-10-29, tag `v1.0-hw`): the screen, all 27 keys, pressure, the CPU meter, saving and the USB Sounds and backup tools all work. The installed package was built from this tag with fm1-base `086cd0c` (sha256 `1a3b809f…7fc5`).
+- No firmware package (`.fwsc`) is included in this repo.
 - Before installing any custom firmware:
   - back up the unit's full flash;
   - keep the official V15 image for recovery;
