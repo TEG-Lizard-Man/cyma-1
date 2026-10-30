@@ -1,4 +1,4 @@
-# CYMA-1
+![CYMA-1: a playable Chladni plate for the M-VAVE FM-1. Modal synthesis: one vibration field, three views (sand, field, mesh). Team EG & Lizard_Man](media/banner.png)
 
 A playable Chladni plate: original firmware for the M-VAVE FM-1 pocket synth.
 
