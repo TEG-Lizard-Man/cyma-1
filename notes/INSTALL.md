@@ -11,8 +11,16 @@ Linux machine. It covers:
 
 CYMA-1 was installed this way on a real FM-1 on 2026-10-29:
 - v1.0 went on first, from stock V15, after a full backup read twice from macOS 26 on Apple silicon;
-- v1.1.1 and v1.1.2 went on later that day, as updates;
+- v1.1.1, v1.1.2 and v1.1.3 went on later that day, as updates;
 - the install itself takes about 2 minutes, and the user sounds on the unit survived every update.
+
+**Tested on a real FM-1 so far:** the first install from stock V15 (section 3) and updates (section 4). **Going back
+to stock V15 (section 5) follows the platform's own tools, but we have not yet run it on a real unit.** We will test
+it on a second unit and update this page.
+
+**V15 only.** CYMA-1 installs on an FM-1 running M-VAVE's **V15** firmware. M-VAVE released V16 on 2026-10-21, and
+its own updater now installs V16. V16 changed the bootloader and the flash layout, and no way back from V16 has been
+shown. If your unit reports `FM-1_016` (section 2), don't install CYMA-1 on it, and don't update a V15 unit to V16.
 
 **How to use this page:**
 - Read [section 0](#0-before-anything-the-rules) and [section 6](#6-recovery) once, before you start.
