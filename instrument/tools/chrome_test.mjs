@@ -131,14 +131,16 @@ const BASE = `http://127.0.0.1:${PORT}`;
 const ringStats = (ctx) => evaluate(`new Promise((res) => { const S = window.__cyma.S, old = S.node.port.onmessage;
   S.node.port.onmessage = (e) => { if (e.data.type !== 'captured') return old(e); S.node.port.onmessage = old;
     const l = e.data.l, r = e.data.r; let f = -1, pk = 0, nan = 0;
-    for (let i = 0; i < l.length; i++) { if (f < 0 && (l[i] !== 0 || r[i] !== 0)) f = i; pk = Math.max(pk, Math.abs(l[i]), Math.abs(r[i])); if (l[i] !== l[i]) nan++; }
+    let z = -1;
+    for (let i = 0; i < l.length; i++) { if (f < 0 && (l[i] !== 0 || r[i] !== 0)) f = i; if (l[i] !== 0 || r[i] !== 0) z = i; pk = Math.max(pk, Math.abs(l[i]), Math.abs(r[i])); if (l[i] !== l[i]) nan++; }
     let lp = 0; for (let i = Math.max(0, l.length - e.data.sampleRate); i < l.length; i++) lp = Math.max(lp, Math.abs(l[i]), Math.abs(r[i]));
-    res({ n: l.length, first: f / e.data.sampleRate, peakDb: 20 * Math.log10(pk + 1e-12), lastDb: 20 * Math.log10(lp + 1e-12), nan, t1: e.data.t1, ct: S.ac.currentTime }); };
+    res({ n: l.length, first: f / e.data.sampleRate, last: (z + 1) / e.data.sampleRate, peakDb: 20 * Math.log10(pk + 1e-12), lastDb: 20 * Math.log10(lp + 1e-12), nan, t1: e.data.t1, ct: S.ac.currentTime }); };
   S.node.port.postMessage({ type: 'capture', seconds: 60 }); })`, ctx);
 // ================================================================== 1. dist/web at 1280 px
 await metrics(1280, 900, 1);
 await navigate(`${BASE}/instrument/dist/web/index.html`);
 check("page title", (await evaluate("document.title")).startsWith("CYMA-1"));
+check("footer: produced by Team EG & Lizard_Man, the upstream credits kept", await evaluate("(() => { const f = document.querySelector('footer'), c = f && f.querySelector('.credit'); return !!c && c.textContent.trim() === 'Produced by Team EG & Lizard_Man.' && /fm1-base/.test(f.textContent) && /felucca-bsp/.test(f.textContent) && /OFL/.test(f.textContent); })()"));
 check("41 LED elements drawn", await evaluate("document.querySelectorAll('#panel rect[fill=\"#FFF1D9\"]').length") === 41, await evaluate("document.querySelectorAll('#panel rect[fill=\"#FFF1D9\"]').length"));
 check("hit targets: 8 knobs, 14 buttons, 27 keys", await evaluate("document.querySelectorAll('#controls .hit').length") === 49);
 check("worklet inlined", await evaluate("!!document.getElementById('cy-worklet') && document.getElementById('cy-worklet').textContent.includes('registerProcessor')"));
@@ -162,9 +164,10 @@ check("HOME LED lit (level 3)", await until("c.S.leds && c.S.leds[27 + 6] === 3"
 check("coach chip 1 shown", await evaluate("!document.getElementById('coach').hidden && document.getElementById('chipn').textContent.startsWith('1')"));
 
 // the computer keyboard: A = key 7 (C4), held, then leaned on with Space
-await until("c.S.ac.currentTime > 2.6", 4000);           // past app.c's boot "ting" (a soft C4 at 1.5 s, §6.7)
+await until("c.S.ac.currentTime > 2.8", 4000);           // past app.c's boot logo (v1.1.1: Team EG's chime, 30 ms to 2.35 s)
 const r0 = await ringStats();
-check("exact silence until the firmware's boot ting at 1.5 s", r0.first < 0 || r0.first >= 1.45, JSON.stringify(r0));
+check("the boot logo: exact silence until its E at 30 ms, then the chime, and exact silence again from its hand-over at 2.35 s",
+      r0.first >= 0.025 && r0.first < 0.06 && r0.last > 1.9 && r0.last <= 2.4 && r0.peakDb > -40 && r0.nan === 0, JSON.stringify(r0));
 const tKey = await st("c.S.ac.currentTime");
 await key("keyDown", "KeyA");
 check("QWERTY A holds key 7", await until("c.KS[7].down", 1000));
@@ -179,7 +182,7 @@ await shot("page_1280_leaning.png", false);
 await key("keyUp", "Space");
 await key("keyUp", "KeyA");
 const r1 = await ringStats();
-check("the note is heard: louder than the ting, no NaN", r1.peakDb > r0.peakDb + 3 && r1.peakDb > -50 && r1.nan === 0, `ting peak ${r0.peakDb.toFixed(1)} dBFS, after the key ${r1.peakDb.toFixed(1)} dBFS`);
+check("the note is heard after the logo (the last second's peak), no NaN", r1.lastDb > -50 && r1.lastDb > r0.lastDb + 20 && r1.nan === 0, `logo peak ${r0.peakDb.toFixed(1)} dBFS, the second before the key ${r0.lastDb.toFixed(1)} dBFS, the key's ${r1.lastDb.toFixed(1)} dBFS`);
 check("key 7 released", await until("!c.KS[7].down", 1000));
 await sleep(500);
 check("lean released over 400 ms", await st("c.S.lean === 0"), await st("c.S.lean"));
@@ -315,7 +318,7 @@ if (zips.length) {
     check(".mid is SMF 0, 480 PPQ, with notes and poly AT", ok && ons.length >= 5 && ats.length >= 1, `${m.length} B, ${ons.length} note-ons, ${ats.length} AT`);
     // the two files' zero: the WAV's first sound and the .mid's first note-on, 50 ms in, both (web-6)
     // the WAV's first onset: the first 2 ms hop whose RMS jumps past 1.8x (5 dB) the loudest of the 20 ms before it (a note
-    // over the boot ting's tail is an onset; the tail itself is not)
+    // over the boot sound's tail is an onset; the tail itself is not)
     const sr = b.readUInt32LE(24), n = (b.length - 44) / 6, hop = Math.round(sr * 0.002), rms = [];
     for (let h = 0; (h + 1) * hop <= n; h++) {
       let e = 0;
@@ -418,7 +421,7 @@ if (demoN) {
 }
 
 // Factory reset, pressed twice: the firmware reboots in the running worklet (web-22). Last in this section: the
-// fresh boot's ting would sound under the checks after it
+// fresh boot's logo would sound under the checks after it
 {
   await until("!document.getElementById('reset').dataset.armed", 5000);   // (the arming above lasts 4 s)
   const rsA = await rect("#reset");
@@ -504,7 +507,8 @@ await key("keyDown", "KeyG"); await sleep(400); await key("keyUp", "KeyG");
 const q1 = await ringStats();
 // (frames over context time tells 44.1 kHz from 48 kHz, 3,900 Hz apart; a loaded machine's dropped render quanta read
 // a few hundred Hz low, so the tolerance is 1,500 Hz: it still cannot mistake one rate for the other)
-check("48 kHz: the note is heard, the capture stays at 44.1 kHz", q1.peakDb > q0.peakDb + 3 && q1.nan === 0 && Math.abs(q1.n / q1.t1 - 44100) < 1500, `peak ${q0.peakDb.toFixed(1)} -> ${q1.peakDb.toFixed(1)} dBFS, ${q1.n} frames in ${q1.t1.toFixed(2)} s`);
+// (v1.1.1: the last second's peak, as above: the whole ring holds the boot logo, louder than a soft key)
+check("48 kHz: the note is heard, the capture stays at 44.1 kHz", q1.lastDb > q0.lastDb + 3 && q1.nan === 0 && Math.abs(q1.n / q1.t1 - 44100) < 1500, `last second ${q0.lastDb.toFixed(1)} -> ${q1.lastDb.toFixed(1)} dBFS (the logo's peak ${q0.peakDb.toFixed(1)}), ${q1.n} frames in ${q1.t1.toFixed(2)} s`);
 check("48 kHz: the page says so", /resampled/.test(await evaluate("document.getElementById('barmsg').textContent")));
 report("48 kHz");
 
@@ -523,6 +527,10 @@ await click(g3.x, g3.y);
 check("dev build: switched on via worklet.js", await until("c.S.on === true", 8000));
 check("dev build: frames", await until("c.frames > 30", 4000));
 check("dev build: no inlined worklet", await evaluate("!document.getElementById('cy-worklet')"));
+// (v1.1) the unpackaged dev build has no demos/ (package_web.py adds them to dist/web), so the intro's poster image
+// (demos/01_singing_bowl_lean.png) is a 404 there by design; this Chrome loads that lazy image, v1.0's page included
+for (let i = problems.length - 1; i >= 0; i--)
+  if (/404/.test(problems[i]) && /\/instrument\/build\/emu\/demos\//.test(problems[i])) problems.splice(i, 1);
 report("dev build");
 
 // ================================================================== 8. graceful errors

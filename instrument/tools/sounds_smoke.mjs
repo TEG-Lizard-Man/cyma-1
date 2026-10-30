@@ -254,7 +254,7 @@ check('app_version', /^[A-Za-z0-9._-]{1,32}$/.test(appVer), `"${appVer}"`);
 const DEF = fileTable.params.map((p) => p.def_q16);
 
 // ---- the ops
-D.render(1800);                                                       // past the splash
+D.render(1800);                                                       // the boot (the splash is the screen's alone)
 let c = D.cur();
 check('cur', c.rc === 0 && c.name === 'SINGING BOWL' && same(c.q, VEC.factory[0].q16) && (D.state() & 0xFF) === 0,
   `rc ${c.rc}, ${c.name}, state 0x${D.state().toString(16)}: the targets of 01`);

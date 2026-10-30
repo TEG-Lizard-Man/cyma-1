@@ -776,6 +776,27 @@ void cy_fx_reset(void)
     cy_fx.snap = 1;
 }
 
+/* (v1.1.1) as cy_fx_reset, every audio state back to silence and the next block snapped to the targets, but the
+ * drift of lines 1 and 5 goes on from where it was: their random walk runs whether anything sounds or not, a clock
+ * rather than a sound, so after the engine's restart (cy_engine_restart: the boot logo) the room is exactly as the
+ * same time of silence would have left it */
+void cy_fx_clear(void)
+{
+    float ma[2], mb[2], mt[2], md[2];
+    uint32_t rng[2], k;
+    for (k = 0; k < 2u; k++)
+        ma[k] = cy_fx.ma[k], mb[k] = cy_fx.mb[k], mt[k] = cy_fx.mt[k], md[k] = cy_fx.md[k], rng[k] = cy_fx.rng[k];
+    cy_fx_reset();
+    for (k = 0; k < 2u; k++)
+        cy_fx.ma[k] = ma[k], cy_fx.mb[k] = mb[k], cy_fx.mt[k] = mt[k], cy_fx.md[k] = md[k], cy_fx.rng[k] = rng[k];
+}
+
+/* (v1.1.1) the next block jumps straight to the targets, as after a reset, the audio state untouched: for a restart's
+ * hand-over (engine.c), whose room has had only silence through it since its cy_fx_clear, so the zeroing (about 24,000
+ * words: a sixth of a block on a slow chip) is not done twice, the second time in the render that takes the player's
+ * first notes */
+void cy_fx_snap(void) { cy_fx.snap = 1; }
+
 void cy_fx_meter(cy_fx_meter_t *m)
 {
     m->peak_l = cy_fx.peak[0];

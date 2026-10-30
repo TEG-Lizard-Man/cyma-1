@@ -1,0 +1,169 @@
+# SPDX-License-Identifier: MPL-2.0
+# CYMA-1 v1.1.1 boot logo (app.c "the boot logo"): Team EG's chime, played live by the engine at every boot, with
+# the splash's credit. Its E at 30 ms, its G at 210 ms, the flick at 560 ms; it rings out on its own, 60 dB down by
+# 2.0 s, and at 2.35 s the engine changes hands: the logo fades out over 8.7 ms on its own plate (71 dB down by then),
+# the engine starts again from cold and the player's preset takes it. tools/golden.py checks the renders:
+#   logo_boot.wav     the first boot from t = 0: E and G within 5 cents, -60 dB by 2.05 s, exact zeros from the
+#                     hand-over to the key at 3 s (#@mark key_on_logo), and no click there (8.3.5's rule)
+#   quiet_boot.wav    BOOT SOUND off (GLO held on the GLOBAL page; saved; a reboot): exact zeros to the key at 3 s
+#   the key at 3 s and its ring, in both, lined up at its first sample: the first 20 ms bit for bit the same, and
+#                     every 100 ms within 0.1 dB (the logo leaves nothing behind; the room's drift is a clock, and a
+#                     reboot lands on another phase of the render's 2.9 ms grid)
+#   logo_skip.wav     a key under the credit (0.3 s): the logo fades out over 8.7 ms with no click (exact zero within
+#                     20 ms of the key's line, its sensing included), and the key sounds within 30 ms
+# MASTER sets its level as everything's; MIDI does not skip the splash but ends the logo (the player's sound).
+#   instrument/build/host/cyma-1_host instrument/tests/boot_logo.txt OUTDIR
+#
+# ---- a first boot: BOOT SOUND is on by default, and the logo sounds from t = 0
+wav24 out:logo_boot.wav
+master 4096
+wait 60
+expect boot_sound 1
+expect logo 2
+expect splash 1
+expect voices 1
+wait 250
+# (0.31 s: E and G ring) the logo lights no key and sends no MIDI
+expect voices 2
+expect ledk23 0
+expect ledk26 0
+#@leds dark>=27 lit>=0
+leds
+expect_no_out USB 90 4C 42
+expect_no_out USB 90 4F 78
+expect midi_notes 0
+expect notes 0
+expect edited 0
+wait 2040
+# (2.35 s) handed over: the preset as it boots, untouched
+expect logo 0
+expect logo_end 2350
+expect preset 1
+expect edited 0
+expect splash 1
+wait 650
+#@mark key_on_logo
+key 7 down 100
+wait 400
+key 7 up
+wait 2600
+wav24stop
+expect logo 0
+expect nan 0
+#
+# ---- BOOT SOUND off: GLO (the GLOBAL page), then GLO held there 0.6 s. A tap of it is still layer B's latch
+tap GLO
+expect page 4
+expect layer 0
+listen
+press GLO
+wait 600
+expect boot_sound 0
+said BOOT SOUND OFF
+release GLO
+wait 100
+expect layer 0
+expect page 4
+# (saved with the settings: the autosave, 30 s after the last save and 3 s of quiet)
+setsaves 0
+wait 34000
+expect setsaves >0
+expect boot_sound 0
+#
+# ---- the boot with BOOT SOUND off: silent, as before v1.1.1 (the same timeline as the first boot)
+reboot
+wav24 out:quiet_boot.wav
+master 4096
+wait 60
+expect boot_sound 0
+expect logo 0
+expect splash 1
+expect voices 0
+wait 2940
+expect logo 0
+expect logo_end -1
+#@mark key_on_quiet
+key 7 down 100
+wait 400
+key 7 up
+wait 2600
+wav24stop
+#
+# ---- back on: held again, saved, and the next boot plays it
+tap GLO
+expect page 4
+press GLO
+wait 600
+expect boot_sound 1
+said BOOT SOUND ON
+release GLO
+setsaves 0
+wait 34000
+expect setsaves >0
+reboot
+wait 100
+expect boot_sound 1
+expect logo 2
+#
+# ---- a key under the credit (0.3 s, the G at its loudest): the logo fades out over 8.7 ms on its own plate, the
+# engine starts again from cold with the player's preset, and the key sounds behind the fade
+reboot
+wav24 out:logo_skip.wav
+master 4096
+wait 260
+expect logo 2
+#@mark skip_key
+key 7 down 100
+wait 30
+expect notes 1
+expect logo 0
+expect logo_end >299
+expect logo_end <320
+wait 370
+key 7 up
+wait 1600
+wav24stop
+expect logo 0
+#
+# ---- MIDI does not cut the splash, but any channel message ends the logo: the player's sound
+reboot
+wait 400
+expect logo 2
+midi 90 3C 64
+wait 40
+expect logo 0
+expect splash 1
+expect midi_notes 1
+expect voices 1
+midi 80 3C 00
+#
+# ---- a "splash 0" script (the demos): no splash and no logo
+reboot
+splash 0
+wait 100
+expect logo 0
+expect logo_end -1
+expect voices 0
+#
+# ---- the device's governor (here by "governor 1", fed by "peak" and "overload" as the audio interrupt feeds it): the
+# logo's blocks are its own, read and forgotten (its flick's onsets are its heaviest), so the player's budget, voices
+# and tails start as without it; after the hand-over it acts as ever
+reboot
+governor 1
+wait 100
+expect logo 2
+expect budget 128
+peak 950
+wait 60
+overload
+wait 60
+expect budget 128
+expect gov_tails 8
+expect gov_voices 8
+wait 2400
+expect logo 0
+expect budget 128
+peak 950
+wait 60
+expect budget <128
+governor 0

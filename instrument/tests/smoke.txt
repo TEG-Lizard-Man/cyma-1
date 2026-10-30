@@ -5,6 +5,8 @@
 # (tools/golden.py runs every scenario; lines starting "#@" are its notes, plain comments to the simulator.)
 wait 600
 shot boot.png
+# (boot.png is the splash's credit; the splash then ends, so end.png shows the screen live, as before)
+splash 0
 wait 1100
 tour 0
 expect page 0

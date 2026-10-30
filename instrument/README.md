@@ -9,16 +9,58 @@ showed people the shapes of sound. CYMA-1 makes that playable on a pocket keyboa
 harder, the plate starts to sing, and the sand jumps off the antinodes and snaps into a crisp figure. Turn SELECT and
 a circle melts into a hexagon and then a star. The overtones glide with it, and the sand flows into the new shape.
 
-It is built on [fm1-base](../reference/fm1-base) (MPL-2.0) and is MPL-2.0 itself.
+Produced by **Team EG & Lizard_Man**. It is built on [fm1-base](../reference/fm1-base) (MPL-2.0) and is MPL-2.0
+itself.
 
 > **Status, plainly.** CYMA-1 runs in the **host simulator** and in the **browser**. Both builds compile the same C
-> code, and that code is what the test harness exercises. The **device package (`cyma-1.fwsc`) is built but has never
-> been installed on an FM-1.** Nobody has heard it on hardware yet. The sound and screen figures are **algorithmic,
-> from the host build**. The CPU figures closest to the device come from running that exact package in the fm1-emu
-> chip emulator at the FM-1's clock (`run_all.sh --perf`). That is still **not a measurement on the FM-1**: the
-> emulator has no cache model, so the real chip can only be slower on a cold path. The current pass/fail state of
-> every test, the package's SHA-256 and the device-time figures all live in [docs/SPEC.md](docs/SPEC.md), generated
-> from the latest run. Read [Before you flash anything](#before-you-flash-anything) before you put it on a device.
+> code, and that code is what the test harness exercises. **v1.0 has run on a real FM-1 since 2026-10-29.** That
+> unit showed what **v1.1** fixes: 21 AETHER chords read 90–95 % on the LOAD meter and crackled, because the chip
+> runs CYMA-1's audio about 1.2–1.6× slower than the emulator's instruction counts. **v1.1.1 and v1.1.2 ran on the
+> same unit that evening:** the boot and the bell, AETHER without the crackle, and USB coming back after a replug were
+> confirmed there. v1.1.2 showed the two field bugs that **this tree, v1.1.3** (`cyma-1.fwsc`, identity
+> `FM-1_94010103`), fixes; v1.1.3 is built and tested, and **its own hardware check is still to come**. The sound and
+> screen figures are **algorithmic, from the host build**. The CPU figures closest to the device come from
+> running that exact package in the fm1-emu chip emulator at the FM-1's clock (`run_all.sh --perf`), and v1.1 was also
+> run with the emulator's clock slowed to 1.4× and 1.6× to stand in for the chip. That is still **not a measurement
+> on the FM-1**. The current pass/fail state of every test, the package's SHA-256 and the device-time figures all live
+> in [docs/SPEC.md](docs/SPEC.md), generated from the latest run; every release's changes are in
+> [../CHANGELOG.md](../CHANGELOG.md).
+> Read [Before you flash anything](#before-you-flash-anything) before you put it on a device.
+>
+> **What changed in v1.1:** bowed chords no longer overrun the chip. The device's CPU governor now limits how many
+> notes bow at once to two, because a bow's cost is its friction solver, which v1.0's mode cuts never reached. On the
+> FM-1 a 21 AETHER chord sounds its first two notes bowed (each exactly as before) and the chord's other notes do not
+> start; a melody still hands the bow to each new note. Expect bowed chords to stay at two notes: a third comes back
+> only on a unit with clear headroom, after a two-note hold, and not while chords keep arriving (the emulator's
+> stand-ins for a slower chip never gave it back). When the chip runs short on a bowed patch, released notes' tails
+> fade out early (over 50 ms, the quietest first) and ring again once the playing has been lighter for about 2 s;
+> when it cannot carry a new bowed chord and the last one's ringing tails together, the tails fade quickly (5 ms) as
+> the chord begins and its second note follows about 6 ms after its first. Mallet and rain presets keep v1.0's
+> behaviour. The render loops that ran from flash on bowed chords moved into RAM. A page's layer B can now be latched
+> by tapping that page's button again (tap it again, or tap SEL, to leave). The boot screen now opens with the credit:
+> the sand springs into **TEAM EG & LIZARD_MAN PRESENT**, bursts, and forms the CYMA-1 logo (3.15 s in all; the keys
+> play through it). The host and browser sound is unchanged, bit for bit.
+>
+> **What changed in v1.1.1:** CYMA-1 now says hello. At every boot the engine itself plays **Team EG's sonic logo**,
+> live, not from a recording: a bronze bell's soft E, then a full G, then a quick flick as the sand locks into the
+> credit. It rings out on its own by about 2 s, at the level MASTER sets. It never touches your sound: the preset you
+> boot into plays as it would without it, and nothing of the bell is saved. Any key, button, knob or MIDI message
+> stops it at once (a fade under 10 ms) and then does what it always does (a key's note follows the fade, about 15 ms
+> late on that one touch). To switch it off, **hold GLO for half a second on the GLOBAL page**: the footer says
+> `BOOT SOUND OFF`, it is saved with the settings, and the boot is silent again (hold GLO again to bring it back).
+> The browser plays it too, in place of its old soft "ting". The
+> logo and its tagline now hold for over 3 s, and any key, button or knob skips to the plate. And v1.1.1 is built on
+> the Team EG platform, a pinned fork of fm1-base (`platform/`, made by `tools/get_platform.sh`), whose main loop no
+> longer stalls once a second when no USB host is attached (on battery, or on a charger): that stall held keys, TRS
+> MIDI and the screen up to about 45 ms.
+>
+> **What changed in v1.1.2:** the TEAM EG & LIZARD_MAN credit holds about 3 s longer, so it can be read (9.15 s in
+> all; any key still skips).
+>
+> **What changed in v1.1.3:** the two bugs v1.1.2 showed on the unit. With MASTER at zero, the boot bell no longer
+> plays a short burst: the platform now reads MASTER before the audio starts, so the first block plays at the knob's
+> level (fm1-base's `device/main_fm1.c`, in `platform/patches`). And every boot now lands on the SAND view, so the
+> splash's sand flows straight into the sand table; EDIT still reaches FIELD and MESH.
 
 ---
 
@@ -66,9 +108,9 @@ With every exciter, pressure also drives STRETCH: lean in and the metal tightens
 | **K1–K4** | The four parameters shown along the top of the screen, for the current page and layer |
 | **MASTER** | Volume. It comes after the limiter, so it never changes the sound's character |
 
-### Pages (hold SEL for layer B)
+### Pages (layer B: hold SEL, or tap the page's button again)
 
-| Button | Page | Layer A | Layer B (SEL held) |
+| Button | Page | Layer A | Layer B (SEL held, or the page's button tapped again) |
 |---|---|---|---|
 | HOME | **PLATE** | MATERIAL · STIFFNESS · CARVE · DECAY | TARGET · BRIGHT · SHIMMER · MODES |
 | ENV | **EXCITE** | HARDNESS / FORCE / DENSITY · POS X · POS Y · TENSION / GRIT / SPREAD | NOISE · DAMPER · BLOOM · PALM / SWELL |
@@ -77,6 +119,20 @@ With every exciter, pressure also drives STRETCH: lean in and the metal tightens
 | GLO | **GLOBAL** | VEL CURVE · PRESS SENS · TUNE · VOICES | THEME · GRAINS · MOTION · DETAIL |
 
 On EXCITE, the first and last knobs follow the exciter. The slashes above list MALLET, then BOW, then RAIN.
+
+There are two ways to reach a page's layer B:
+- **Hold SEL.** Layer B shows while SEL is held and goes back to A when you let go.
+- **Tap the button of the page you are on** (new in v1.1). Layer B then stays without holding anything: the SEL LED
+  stays lit, each of the four knob cells along the top of the screen shows a small notch in its top-right corner (and
+  their labels change), and the footer says `LAYER B` for a moment. It goes back to A when you tap that button again,
+  tap **SEL** on its own, or press another page button. The tap counts when you let go: a press held longer than
+  about 0.4 s, or one that lands together with SEL (SEL+HOME is COMPARE), does not toggle. Holding SEL still works as
+  before.
+
+**Changing the colour theme:** press **GLO** for the GLOBAL page, then tap **GLO** until the first knob cell reads
+**THEME** (the footer says `GLOBAL LAYER B`). Turn K1 to switch between CYMATIC (the material's colours) and PHOSPHOR
+(green on black). Tap GLO or SEL to go back to layer A. (Or hold SEL on the GLOBAL page and turn K1.) THEME is a
+setting, not part of the preset, so it stays as you leave it.
 
 A few parameters worth knowing:
 - **MATERIAL** runs from rubber through wood, glass, steel and bronze to "aether". It sets how long the plate rings,
@@ -97,8 +153,10 @@ A few parameters worth knowing:
 | **REC** | hold: **DAMP**, a palm on the plate | |
 | **EDIT** | view: **SAND → FIELD → MESH** | |
 | **SAVE** | save. On a factory preset the footer asks `SAVE TO U07?` (the first free slot; PRESETS picks another). A slot that already holds a preset asks `REPLACE U05?` in red, with that preset's name; a full bank starts on U32. Press SAVE again to write it; a page button cancels, and an untouched question closes after 15 s. A save over ringing notes fades the output for about 0.1 s instead of clicking | **REVERT** to the stored preset. SEL+SAVE again within 5 s undoes the revert |
-| **HOME** | page PLATE | **COMPARE**: hear the stored preset while held |
-| **GLO** | page GLOBAL; tap again to go back | replay the **tour** |
+| **HOME** | page PLATE; on PLATE, layer B ⇄ A | **COMPARE**: hear the stored preset while held |
+| **ENV · FX · LFO** | pages EXCITE, SPACE, MOTION; on that page, layer B ⇄ A | |
+| **GLO** | page GLOBAL; on GLOBAL, layer B ⇄ A (THEME · GRAINS · MOTION · DETAIL). In v1.0 a second tap went back to the page before. On GLOBAL, **held 0.5 s: BOOT SOUND** on ⇄ off (v1.1.1: the logo at boot; saved with the settings) | replay the **tour** |
+| **SEL** | hold: layer B while held; tap on its own while layer B is latched: back to layer A | (the combos in this column) |
 | **OCT− / OCT+** | octave −3…+3; **both together: PANIC** (all notes off; freeze, latch and damp cleared) | transpose ±1 semitone (in SURFACE: the plate's root) |
 | **SEL + PRESETS** | **morph-scrub** between this preset and its neighbour, 1/16 per detent. Let go of SEL to keep the in-between sound | |
 
@@ -242,12 +300,18 @@ of `--artifact`.
 Run everything from the project root. `DYLD_LIBRARY_PATH` lets Pillow find libraqm for the fonts.
 
 ```sh
+tools/get_platform.sh                                           # the Team EG platform -> platform/fm1-base-teg (once)
 export DYLD_LIBRARY_PATH=/opt/homebrew/lib
-python3 reference/fm1-base/tools/build.py instrument --host     # host simulator: instrument/build/host/cyma-1_host
-python3 reference/fm1-base/tools/build.py instrument --web      # browser emulator: instrument/build/emu/
-tools/build_device.sh instrument --no-ble                       # device package, built and NEVER flashed
+export FM1_BASE="$PWD/platform/fm1-base-teg"                    # v1.1.1 and later: the Team EG platform (its TEG_FORK.md)
+python3 "$FM1_BASE/tools/build.py" instrument --host            # host simulator: instrument/build/host/cyma-1_host
+python3 "$FM1_BASE/tools/build.py" instrument --web             # browser emulator: instrument/build/emu/
+tools/build_device.sh instrument --no-ble --release 1.1.3       # device package (build/cyma-1-1.1.3.fwsc), NEVER flashed
 instrument/tools/run_all.sh                                     # everything below, with a summary
 ```
+
+`run_all.sh` takes fm1-base from `FM1_BASE`; unset, it uses `platform/fm1-base-teg` when it is there (v1.1.1 and
+later are built on it), else `reference/fm1-base`, and hands the same tree to `tools/build_device.sh`. The steps from
+a fresh clone to the release's exact package are in [../BUILDING.md](../BUILDING.md).
 
 `instrument/tools/run_all.sh` runs, in order:
 1. the harness's own selftests and a lint of every script;
@@ -261,7 +325,7 @@ Flags add the slower suites:
 
 | Flag | Adds | Time |
 |---|---|---|
-| `--device` | The device package, built and never flashed. Every check must print ok, the image must fit the app slot (581,564 B) and the identity must be `FM-1_94…`. It writes `build/SHA256SUMS`, which `docs/SPEC.md` quotes after checking it against the files | about 15 s |
+| `--device` | The device package, built and never flashed, as release `1.1.3` (`fm1.toml`'s `release`: `build.py --release 1.1.3`, identity `FM-1_94010103`, renamed `build/cyma-1.fwsc`). Every check must print ok, the image must fit the app slot (581,564 B) and the identity must be `FM-1_94…`. It writes `build/SHA256SUMS`, which `docs/SPEC.md` quotes after checking it against the files | about 15 s |
 | `--perf` | `--device`, then the package in fm1-emu at 205 MHz (the FM-1's measured throughput), timed from breakpoints on the firmware's own functions. It gates the slowest audio block, xruns, the screen's frame time, key-to-sound latency and idle redraws (`tools/emu_perf.py`) | about 3 min |
 | `--chrome` | The page in headless Chrome. Every check is asserted: switch-on, keys, mouse, lean, knobs, capture, MIDI, themes, 1280 / 2× / 390 px, a sandboxed frame, 48 kHz, `file://`, the dev build, and the error paths (`tools/chrome_test.mjs`) | about 40 s |
 | `--artifact` | The page as its publishing target frames it: converted to the artifact shape, in a cross-site sandboxed frame under the host's CSP, with the host's downloads runtime stubbed (`tools/artifact_test.mjs`). Then the same suite again on the package that gets published, built with the artifact's own URL as its share base (`artifact_sb`: Copy link gives `#cy2.…` within claude.ai's 128-character anchor; `dist/` is left as it was) | about 45 s |
@@ -298,7 +362,11 @@ exact output, untouched.
 
 ## Before you flash anything
 
-**This firmware has never run on an FM-1.** The `.fwsc` builds cleanly and passes the build's static checks: no
+**Installing from a Mac without the Transporter**, as every CYMA-1 install so far was done, is a separate guide:
+[../notes/INSTALL.md](../notes/INSTALL.md). It covers the first install from stock V15 with a full backup, updates
+from an earlier CYMA-1, going back to V15 and recovery. This section is the Transporter route.
+
+**v1.1.3 has not been confirmed on an FM-1 yet** (v1.0, v1.1.1 and v1.1.2 have run on one since 2026-10-29). The `.fwsc` builds cleanly and passes the build's static checks: no
 calls from RAM-resident code, no soft-double maths, no risky 64-bit multiplies, and the memory pools fit. It also runs
 in the fm1-emu chip emulator at the FM-1's clock (`run_all.sh --perf`). None of that proves it boots, sounds right or
 keeps up on the real chip. fm1-base also has **no torn-install protection**: an install cut off halfway can leave the
@@ -339,6 +407,9 @@ running. The project's `.venv312` has the `mido` and `python-rtmidi` it needs.
 | It prints | What it means |
 |---|---|
 | `FM-1_015  [running]` | Stock V15: carry on. |
+| `FM-1_9400  [running]` | CYMA-1 v1.0: carry on (this is an update). Back up your user presets and settings first (step 6's `fm1_backup.py backup`); v1.1.3 reads the same settings and user bank. |
+| `FM-1_94010100  [running]` | CYMA-1 v1.1: carry on (this is an update), with the same backup first. v1.1.3 reads the same settings (BOOT SOUND uses a byte v1.1 kept reserved, at 0: on) and user bank. |
+| `FM-1_94010101` or `FM-1_94010102  [running]` | CYMA-1 v1.1.1 or v1.1.2: carry on (this is an update), with the same backup first. Same settings and user bank. |
 | `FM-1_016` | **Stop.** V16 and Echomatter's custom firmware both report this identity, and nobody has shown a way back from V16. |
 | `ota-…` or `[update loader …]` | An earlier install never finished. Go to step 5. |
 | `FM-1 not found` | Check the cable, and that no other app has the port open. |
@@ -360,9 +431,11 @@ shasum -a 256 firmware/stock/FM-1_V15_official.fwsc  # db1642b2b6fa5c2cccb11ffd1
   from fm1_open, and `fm1_install.py` recognises it as stock V15.
 - Leave the Transporter wired up for the install.
 
-**4. Install.** The tool prints the package (`FM-1_9400`) and the device, then asks before it writes. From then on,
-hands off: do not touch the FM-1, the cable or the Mac until CYMA-1's splash screen appears. The unit shows an update
-screen and restarts by itself, and the tool then checks that `FM-1_9400` is running.
+**4. Install.** The tool prints the package (`FM-1_94010103`, CYMA-1 1.1.3; v1.1.2's was `FM-1_94010102`, v1.1.1's
+`FM-1_94010101`, v1.1's `FM-1_94010100`, v1.0's `FM-1_9400`) and the device, then asks before it writes. From then on,
+hands off: do not touch the FM-1, the cable or the Mac until CYMA-1's splash screen appears (its boot sound plays as
+the credit forms). The unit shows an update screen and restarts by itself, and the tool then checks that
+`FM-1_94010103` is running.
 
 ```sh
 .venv312/bin/python reference/fm1-base/bsp/tools/fm1_install.py instrument/build/cyma-1.fwsc
@@ -443,6 +516,8 @@ instrument/
 The design is specified in [docs/CYMA-1-spec.md](../docs/CYMA-1-spec.md).
 
 ## Licence and credits
+
+**Produced by Team EG & Lizard_Man.**
 
 CYMA-1 is MPL-2.0, file by file. It is built on **fm1-base** (MPL-2.0) and its felucca-bsp board support. The fonts
 are **Barlow** and **Terminus**, both under the SIL Open Font License 1.1. No GPL code is included. Ernst Chladni

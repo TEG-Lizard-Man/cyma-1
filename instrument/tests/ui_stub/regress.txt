@@ -7,7 +7,10 @@ wait 1800
 shotmode 1
 ui tour 0
 silence
-wait 2000
+# (8 s: the boot splash, 9.15 s since v1.1.2's longer credit hold (6.15 s in v1.1.1), is over before the first count
+# at 9.8 s; the stub sends no key, button or detent, so nothing cuts it short. Every step after this moved by the
+# same 3 s, as in v1.1.1)
+wait 8000
 # silent and settled: nothing redraws (0 fps)
 blitmark
 wait 5000

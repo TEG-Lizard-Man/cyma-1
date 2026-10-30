@@ -1,20 +1,33 @@
 # SPDX-License-Identifier: MPL-2.0
 # CYMA-1 screens (spec §6, §8.2): a PNG of every state the screen has. shotmode 1 makes the sand deterministic, so
 # a shot is the same on every run. tools/contact_sheet.py lays them out in name order (the sNN_ prefix).
-# Splash at 300 / 900 / 1500 ms; every page x layer (and EXCITE for each exciter); the three views; the focus
-# pill (numeric and enum); the SHAPE / PRESET / EXCITER readouts; the SAVE dialog; the morph scrubber; the tour
-# steps 1-5; FROZEN; SURFACE; BOW and RAIN at work; PHOSPHOR; reduced motion; a gallery of the shapes; and, last, the
-# states where overlays meet: a tour chip with a hint or a readout, a long edited name with a badge, BOW with a footer
-# message, MESH on the top key, FIELD and MESH on the glass star.
+# Splash at 300 / 1000 / 1580 / 2500 / 3000 / 5000 / 5900 ms; every page x layer (and EXCITE for each exciter); the
+# three views; the focus pill (numeric and enum); the SHAPE / PRESET / EXCITER readouts; the SAVE dialog; the morph
+# scrubber; the tour steps 1-5; FROZEN; SURFACE; BOW and RAIN at work; PHOSPHOR; reduced motion; a gallery of the
+# shapes; and, last, the states where overlays meet: a tour chip with a hint or a readout, a long edited name with a
+# badge, BOW with a footer message, MESH on the top key, FIELD and MESH on the glass star.
 #   instrument/build/host/cyma-1_host instrument/tests/screens.txt OUTDIR
 shotmode 1
+# the splash (spec §6.7): the credit springing in, the credit and PRESENT, its burst, the logo with its tagline
+# fading in, the logo and tagline held (3 s and 5 s), the sprinkle as the plate fades in; then 700 ms past its end
+# (6.15 s: 3.15 s before the logo's longer hold, so every screen after it is 3 s later than it was, as it moved by
+# 1.55 s with the credit), as the screens after it always were. Nothing here touches a key, button or knob before
+# s04 (a touch would cut the splash short; tour and master do not)
 wait 300
 shot s01_splash_0300.png
-wait 600
-shot s02_splash_0900.png
-wait 600
-shot s03_splash_1500.png
-wait 600
+wait 700
+shot s02_splash_1000.png
+wait 580
+shot s03_splash_1580.png
+wait 920
+shot s03_splash_2500.png
+wait 500
+shot s03_splash_3000.png
+wait 2000
+shot s03_splash_5000.png
+wait 900
+shot s03_splash_5900.png
+wait 750
 tour 0
 master 4096
 wait 200
@@ -29,7 +42,8 @@ key 7 up
 wait 1400
 shot s07_strike_2s.png
 # ---- every page x layer
-tap HOME
+# (already on PLATE: a tap of HOME here would latch layer B since v1.1; the wait keeps every shot's timing)
+wait 80
 wait 200
 shot s10_page_plate_a.png
 press SEL
@@ -321,7 +335,8 @@ shot s88_shape_circle_gong.png
 # a tour chip with the knob hint up (K3 is the one knob not touched yet, so its hint shows), then the PRESETS readout
 preset 1
 wait 400
-tap HOME
+# (already on PLATE: HOME again would latch layer B, v1.1; the wait keeps the timing)
+wait 80
 wait 200
 tour 1
 wait 300
@@ -422,4 +437,15 @@ shot s89_usb_nothing_changed.png
 wait 1500
 expect sx_result 64
 expect user_writes 0
+expect nan 0
+# (v1.1) GLOBAL's layer B latched by GLO again (no SEL held), the footer saying so; GLO once more: layer A. Shot last,
+# so every shot above keeps its state
+tap GLO
+wait 300
+tap GLO
+wait 200
+shot s19_page_global_b_tapped.png
+tap GLO
+wait 200
+expect layer 0
 expect nan 0

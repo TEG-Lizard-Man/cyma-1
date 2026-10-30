@@ -2,7 +2,7 @@
 # CYMA-1 noise floor (spec §3.10.6-7, §3.11, §8.2). MASTER is a float gain after the limiter, quantised once to
 # 24 bits with no dither, so:
 #   noise_silence.wav  at master 1448 (the spec's "-20 dB position": (1448/4096)^2 is -18 dB), nothing playing:
-#                      exact zeros
+#                      exact zeros (v1.1.1: from the boot logo's hand-over on, #@mark logo_over)
 #   noise_tone.wav     a sustained bowed tone at the same MASTER: every low bit alive. tools/golden.py looks at the
 #                      bottom byte of each sample between the marks: >= 250 of its 256 values seen, and no more
 #                      than 2 % of samples with it zero (a 16-bit path would leave it zero every time)
@@ -13,7 +13,14 @@ master 1448
 wait 300
 peakreset
 wav24 out:noise_silence.wav
-wait 3000
+# (v1.1.1: the capture starts at 2.04 s, in the boot logo's last 0.3 s, its ring 62 dB under its peak and fading;
+# at 2.35 s it hands over and from there nothing plays: exact zeros, which golden checks from the mark)
+wait 400
+#@mark logo_over
+expect logo 0
+expect peakq <600
+peakreset
+wait 2600
 wav24stop
 expect peakq 0
 #

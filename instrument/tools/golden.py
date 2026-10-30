@@ -57,7 +57,7 @@ Q_FULL = 8388607.0
 PEAK_MAX_Q = 8104000          # -0.30 dBFS (spec §8.2 limiter; CY_CEIL 0.96605 x 8388607 = 8,103,915)
 FLOOR_30_Q = 265271           # -30 dBFS
 SCENARIOS = ["smoke", "controls", "presets", "bow_sweep", "surface", "morph", "freeze", "silence", "limiter",
-             "noise_floor", "midi", "storage", "screens", "app_fixes", "app_store", "perf"]
+             "noise_floor", "midi", "storage", "screens", "app_fixes", "app_store", "splash", "boot_logo", "perf"]
 SERIAL_LAST = ["perf"]        # timed on a quiet machine: after the others, alone
 DRIVE_PRESETS = {16, 17, 18}  # spec §4.4: MEMBRANE KICK, LOOSE TOM, THUNDER SHEET carry DRIVE
 BESSEL = [1.0, 1.5933, 2.1355, 2.2954, 2.6531, 2.9173]
@@ -71,11 +71,13 @@ GATE_NEEDS = {"presets_audible": "presets", "gain_staging": "presets", "presets_
               "bow_rms_min": "bow_sweep", "silence_zero": "silence", "noise_silence": "noise_floor",
               "noise_lsb": "noise_floor", "freeze_mallet": "freeze", "freeze_bow": "freeze", "limiter": "limiter",
               "limiter_engaged": "limiter", "midi_bend": "midi", "storage_sound": "storage", "surface_touch": "surface",
-              "est_device": "perf", "est_host": "perf", "est_bowed": "perf", "ui_median": "perf", "ui_p99": "perf"}
+              "est_device": "perf", "est_host": "perf", "est_bowed": "perf", "ui_median": "perf", "ui_p99": "perf",
+              "logo_pitch": "boot_logo", "logo_ending": "boot_logo", "logo_off_silent": "boot_logo",
+              "logo_no_leak": "boot_logo", "logo_skip": "boot_logo"}
 
 
 def find_fm1_base(app):
-    """$FM1_BASE, then an ancestor's reference/fm1-base (the copies under /private/tmp have none: the project's)."""
+    """$FM1_BASE, then an ancestor's reference/fm1-base (copies in the system's temp folder have none: the project's)."""
     if os.environ.get("FM1_BASE"):
         return os.environ["FM1_BASE"]
     d = os.path.abspath(app)
@@ -1108,8 +1110,10 @@ def gate_noise(ctx):
     p0 = wav_of(ctx, "noise_floor", "noise_silence.wav")
     p1 = wav_of(ctx, "noise_floor", "noise_tone.wav")
     if p0:
-        nz = int(np.count_nonzero(read_wav24(p0)))
-        ctx.gate("noise_silence", "8.2", "master 1448, nothing playing: exact zeros", nz, 0, "nonzero samples", nz == 0)
+        tq = mark_ms(ctx, "noise_floor", "logo_over")   # (v1.1.1: the boot logo's tail before it, its own gates')
+        nz = int(np.count_nonzero(seg(read_wav24(p0), tq or 0.0, 1e9)))
+        ctx.gate("noise_silence", "8.2", "master 1448, nothing playing: exact zeros", nz, 0, "nonzero samples", nz == 0,
+                 f"from {tq / 1000:.2f} s into the capture (the boot logo's hand-over)" if tq else "")
     else:
         ctx.gate("noise_silence", "8.2", "master 1448, nothing playing: exact zeros", None, 0, "", False, "no render")
     t0, t1 = mark_ms(ctx, "noise_floor", "tone_on"), mark_ms(ctx, "noise_floor", "tone_off")
@@ -1219,6 +1223,93 @@ def gate_storage(ctx):
              f"before/after differ by {same:.2f} dB at most; U01 vs 01 by {diff:.1f} dB")
 
 
+def gate_boot_logo(ctx):
+    """(v1.1.1) the boot logo (tests/boot_logo.txt): its pitch, its ending and the hand-over, BOOT SOUND off, what it
+    leaves behind (nothing), and a skip"""
+    import numpy as np
+    S = "boot_logo"
+    pl, pq, ps = (wav_of(ctx, S, n) for n in ("logo_boot.wav", "quiet_boot.wav", "logo_skip.wav"))
+    kl, kq, ks = (mark_ms(ctx, S, n) for n in ("key_on_logo", "key_on_quiet", "skip_key"))
+    d_pitch = "the boot logo's E5 and G5 within 5 cents (Team EG's chime, played by the engine at boot)"
+    d_end = "the logo 60 dB down by 2.05 s, then exact zeros from the hand-over (<= 2.37 s), with no click"
+    d_off = "BOOT SOUND off: the boot is silent (exact zeros until the first key)"
+    d_leak = "after the logo, a key sounds as with BOOT SOUND off: first 20 ms identical, every 100 ms within 0.1 dB"
+    d_skip = ("a key in the logo: it fades out with no click (exact zero within 20 ms of the key's line: its sensing, "
+              "then the 8.7 ms fade) and the key sounds within 30 ms")
+    if not pl or kl is None:
+        for gid, d in (("logo_pitch", d_pitch), ("logo_ending", d_end), ("logo_no_leak", d_leak)):
+            ctx.gate(gid, "6.7", d, None, None, "", False, "no render")
+    else:
+        a = read_wav24(pl)
+        x = a.astype(np.float64).sum(axis=1) / (2 * Q_FULL)
+        rows, worst = [], 0.0
+        for name, f0, t0, t1 in (("E5", 659.2551, 0.050, 0.200), ("G5", 783.9909, 0.230, 0.550)):
+            s_ = x[int(t0 * FS):int(t1 * FS)]
+            nf = 1 << 18
+            X = np.abs(np.fft.rfft(s_ * np.hanning(len(s_)), nf))
+            f = np.fft.rfftfreq(nf, 1.0 / FS)
+            k = np.where((f > f0 * 2 ** (-60 / 1200)) & (f < f0 * 2 ** (60 / 1200)))[0]
+            j = int(k[np.argmax(X[k])])
+            la, lb, lc = (math.log(X[j + o] + 1e-30) for o in (-1, 0, 1))
+            fr = f[j] + 0.5 * (la - lc) / (la - 2 * lb + lc) * (f[1] - f[0])
+            c = 1200 * math.log2(fr / f0)
+            worst = max(worst, abs(c))
+            rows.append(f"{name} {fr:.2f} Hz ({c:+.1f} c)")
+        ctx.gate("logo_pitch", "6.7", d_pitch, round(worst, 2), 5.0, "cents", worst <= 5.0, "; ".join(rows))
+        n20 = int(0.02 * FS)
+        p2 = x[:int(kl * FS / 1000)] ** 2
+        e = 10 * np.log10(np.convolve(p2, np.ones(n20) / n20, "valid") + 1e-30)
+        e -= 20 * math.log10(float(np.max(np.abs(x[:int(kl * FS / 1000)]))) + 1e-30)
+        above = np.where(e > -60.0)[0]
+        t60 = (above[-1] + n20) / FS if len(above) else 0.0
+        nz = np.where(np.any(a[:int(kl * FS / 1000) - 5] != 0, axis=1))[0]
+        tz = (nz[-1] + 1) / FS if len(nz) else 0.0
+        cnt, wexc, tw, emax, nq, qrel = click_spikes(a, 2000.0, kl - 5)
+        ok = t60 <= 2.05 and tz <= 2.37 and cnt == 0
+        ctx.gate("logo_ending", "6.7", d_end, round(t60, 3), 2.05, "s", ok,
+                 f"-60 dB at {t60:.3f} s; the last sample before the key at {tz * 1000:.1f} ms; hand-over: {cnt} "
+                 f"HP(8 kHz) spikes" + (f", HP max {emax:.0f} dBFS" if emax is not None else ""))
+        if not pq or kq is None:
+            ctx.gate("logo_no_leak", "6.7", d_leak, None, 0.1, "dB", False, "no quiet render")
+        else:
+            b = read_wav24(pq)
+            ia = int(kl * FS / 1000) - 50 + int(np.where(np.any(a[int(kl * FS / 1000) - 50:] != 0, axis=1))[0][0])
+            ib = int(kq * FS / 1000) - 50 + int(np.where(np.any(b[int(kq * FS / 1000) - 50:] != 0, axis=1))[0][0])
+            n = min(len(a) - ia, len(b) - ib)
+            ya, yb = a[ia:ia + n], b[ib:ib + n]
+            same20 = bool(np.array_equal(ya[:n20], yb[:n20]))
+            w = int(0.1 * FS)
+            dmax = 0.0
+            for i in range(0, n - w, w):
+                la_, lb_ = rms_dbfs(ya[i:i + w]), rms_dbfs(yb[i:i + w])
+                if max(la_, lb_) > -60.0:
+                    dmax = max(dmax, abs(la_ - lb_))
+            ctx.gate("logo_no_leak", "6.7", d_leak, round(dmax, 4), 0.1, "dB", same20 and dmax <= 0.1,
+                     f"first 20 ms {'identical' if same20 else 'DIFFER'}; {n / FS:.2f} s compared; the keys at "
+                     f"{ia * 1000 / FS:.1f} and {ib * 1000 / FS:.1f} ms")
+    if not pq or kq is None:
+        ctx.gate("logo_off_silent", "6.7", d_off, None, 0, "nonzero samples", False, "no render")
+    else:
+        b = read_wav24(pq)
+        nzq = int(np.count_nonzero(b[:int(kq * FS / 1000)]))
+        ctx.gate("logo_off_silent", "6.7", d_off, nzq, 0, "nonzero samples", nzq == 0,
+                 f"{kq / 1000:.2f} s of boot, {nzq} nonzero")
+    if not ps or ks is None:
+        ctx.gate("logo_skip", "6.7", d_skip, None, 20.0, "ms", False, "no render")
+    else:
+        c_ = read_wav24(ps)
+        i0 = int(ks * FS / 1000)
+        z = np.where(np.all(c_[i0:] == 0, axis=1))[0]
+        iz = i0 + int(z[0]) if len(z) else len(c_)
+        nz2 = np.where(np.any(c_[iz:] != 0, axis=1))[0]
+        ik = iz + int(nz2[0]) if len(nz2) else len(c_)
+        cnt, wexc, tw, emax, nq, qrel = click_spikes(c_, ks - 100, ks + 300)
+        tz_ms, tk_ms = (iz - i0) * 1000 / FS, (ik - i0) * 1000 / FS
+        ctx.gate("logo_skip", "6.7", d_skip, round(tz_ms, 1), 20.0, "ms", tz_ms <= 20.0 and tk_ms <= 30.0 and cnt == 0,
+                 f"zero {tz_ms:.1f} ms after the key's line, the key's sound at {tk_ms:.1f} ms; {cnt} HP(8 kHz) spikes"
+                 + (f" (worst +{wexc:.1f} dB)" if cnt else "") + (f"; {nq} sub-audible" if nq else ""))
+
+
 def gate_surface(ctx):
     p = wav_of(ctx, "surface", "surface.wav")
     rows, ok = [], True
@@ -1320,7 +1411,7 @@ def cmd_run(args):
     full = not args.only
     print("golden: metrics")
     analyses = [gate_presets, gate_clicks, gate_bow, gate_silence, gate_noise, gate_freeze, gate_limiter, gate_bend,
-                gate_storage, gate_surface]
+                gate_storage, gate_surface, gate_boot_logo]
     if full:
         analyses = [gate_ratios] + analyses + [gate_fdn, lambda c: gate_determinism(c, not args.no_wasm)]
     analyses += [gate_metrics, lambda c: gate_peaks(c, os.path.join(c.app, "build", "demos"))]
@@ -1690,7 +1781,7 @@ def cmd_selftest(args):
     qc.results = {n: {"name": n, "rc": 0, "pass": True, "fails": [], "oks": 1, "metrics": [{"nan": 0}], "perf": [],
                       "hashes": [], "marks": {}, "directives": [], "outdir": None, "log": None} for n in ("smoke", "controls")}
     for fn in (gate_presets, gate_clicks, gate_bow, gate_silence, gate_noise, gate_freeze, gate_limiter, gate_bend,
-               gate_storage, gate_surface, gate_metrics):
+               gate_storage, gate_surface, gate_boot_logo, gate_metrics):
         try:
             fn(qc)
         except Exception as e:      # noqa: BLE001  (as cmd_run: a broken analysis is a failed gate)

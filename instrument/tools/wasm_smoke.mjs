@@ -78,7 +78,8 @@ const fbStats = () => {
 };
 
 // the script: [time s, action], played as someone would: something always sounding. The splash takes the first
-// 1.6 s; the tour, if it starts, is simply played through
+// 6.15 s unless a key, button or knob cuts it short (the keys play through it; the first key here, at 1.8 s, cuts it:
+// the plate at 2.3 s); the tour, if it starts, is simply played through
 const SCRIPT = [
   [1.8, () => ex.web_key(7, 120, 0)],                         // C4, loud
   [2.0, 'leds_key'],

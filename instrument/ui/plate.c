@@ -616,7 +616,9 @@ static void pl_render(int splash, uint32_t mask)
             pl_surface_sand(buf, ys, ye, vis);
             if (sd_nair && pl_shadows)        /* (only grains in the air cast one, and only where it shows) */
                 sd_shadows(&sf, ys, ye);
-            sd_strip(buf, ys, ye, pl_band, pl_far_in);
+            /* (the splash's credit and logo stand on no plate: until the plate is whole, no sand is over a rim to
+             * keep clean, so none is faded there, whatever the shape) */
+            sd_strip(buf, ys, ye, pl_band, splash ? 127 : pl_far_in);
         }
         if (!splash && view != CY_VIEW_MESH)
             vw_marks(&sf);

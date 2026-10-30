@@ -28,6 +28,28 @@
 #include "cy_fonts.h"
 #include "palette.h"
 
+/* the splash (spec §6.7), ms from app_ui_init (boot_t): the credit, then the logo, then the plate. Non-blocking: the
+ * keys play through it. The browser's boot "ting" (app.c) strikes at UI_SPL_BURST, as the credit bursts. Any key,
+ * button or detent cuts it short (app.c ctl_splash_cut): the burst into the plate starts at the next frame */
+#define UI_SPL_CR_HOLD 550u                /* the grains spring onto the credit, then hold; PRESENT fades in */
+#define UI_SPL_BURST 4500u                 /* the credit bursts into an even dusting of the box: whole and still for
+                                            * ~3.95 s (0.95 s before v1.1.2), long enough to read; the boot bell is
+                                            * silent by 2.0 s, so it holds in silence for its last 2.5 s */
+#define UI_SPL_LOGO 4650u                  /* the grains spring onto the CY_LOGO */
+#define UI_SPL_LG_HOLD 5300u               /* the logo whole: hold 3.35 s (0.35 s before v1.1), long enough to read */
+#define UI_SPL_TAG_IN 350u                 /* the tagline fades in over the hold's start, then stays (3 s whole) */
+#define UI_SPL_SPRINKLE 8650u              /* the grains burst into an even sprinkle while the plate fades in */
+#define UI_SPL_OUT 500u                    /* that burst's length, cut short or not */
+#define UI_SPL_END (UI_SPL_SPRINKLE + UI_SPL_OUT)   /* 9150: the chrome draws; the plate is whole */
+#define UI_SPL_RM_FADE 250u                /* reduced motion: no flight, the sand fades out and in over this */
+#define UI_SPL_PRESENT "PRESENT"           /* the credit's small line (its sand is CY_CREDIT: tools/gen_fonts.py) */
+
+/* 0 before a, 1 after b, linear between */
+static float ui_ramp(uint32_t t, uint32_t a, uint32_t b)
+{
+    return t <= a ? 0.0f : t >= b ? 1.0f : (float)(t - a) / (float)(b - a);
+}
+
 /* ---- shared by every ui/ file ---- */
 static const cy_ui_state_t *ui_st;        /* this frame's state, from the app */
 static cy_telemetry_t ui_tel;             /* this frame's copy of the engine's telemetry */
@@ -44,6 +66,8 @@ static uint16_t vw_mcol[65];              /* MESH colours by height (plate.c bui
 static float ui_strike[CY_NMODES];        /* the strike vector the sand's coherent projection uses */
 static int8_t ui_skey = -1;               /* SURFACE: the key struck last */
 static uint32_t vw_seed;                  /* this frame's seed for the marks' sparkles (the same in every strip) */
+static uint32_t ui_spl_spr = UI_SPL_SPRINKLE, ui_spl_end = UI_SPL_END;   /* the splash's burst and end, this boot
+                                                                         * (a cut makes them sooner: ui_frame) */
 
 #include "gfx2.c"
 static void vw_marks(sf_t *sf);
@@ -63,6 +87,9 @@ static uint8_t ui_pre;                    /* the sand was stepped on the tick be
 static uint32_t ui_psig, ui_fc_seen, ui_spr_seen, ui_swp_seen, ui_pulse_seen;
 static uint32_t ui_cost = 10000u;         /* a whole-plate frame's cost (us, wall clock), averaged: the pacing's */
 static uint8_t ui_started, ui_splash_done, ui_fps = 30, ui_keymode_seen;
+static uint8_t ui_spl_skip;               /* a host script's "splash 0" (app.c): the splash ends at the next frame */
+static uint8_t ui_spl_cut;                /* a key, button or detent (app.c ctl_splash_cut): the burst, next frame */
+static uint8_t ui_spl_light;              /* the audio went over 90 % during the splash: the credit has GRAINS' n */
 
 void ui_init(void)
 {
@@ -91,7 +118,8 @@ void ui_init(void)
     ui_fp.a = ui_bp.a = 0.0f, ui_fp.on = ui_bp.on = 0;
     ui_hint_mute_p = -1, ui_hint_mute_t = 0;
     ui_skey = -1;
-    ui_started = ui_splash_done = 0;
+    ui_started = ui_splash_done = ui_spl_skip = ui_spl_light = ui_spl_cut = 0;
+    ui_spl_spr = UI_SPL_SPRINKLE, ui_spl_end = UI_SPL_END;
     ui_full = ui_plate_dirty = 1;
     ui_us = ui_us_max = 0;
     ui_cost = 10000u;
@@ -120,11 +148,71 @@ void ui_shot_mode(int on)
 uint32_t ui_frame_us(void) { return ui_us; }
 uint32_t ui_frame_us_max(void) { return ui_us_max; }
 
-/* the splash screen the platform shows while the app starts: only void (spec §6.7); the animated one is ui_frame's */
+/* the splash screen the platform shows while the app starts: only void (spec §6.7), drawn before app_init, so it
+ * needs nothing set up; the animated one, credit and all, is ui_frame's */
 void ui_splash_static(void)
 {
     lcd_fill(0, 0, 240, 240, UI_C_VOID);
     lcd_sync();
+}
+
+
+/* the splash's grains at t ms: the credit takes every grain there is (ncr: SD_MAX, or n when overloaded), whatever
+ * GRAINS says, so its 19 letters read as well as the logo's 6 at GRAINS 1200 (the device's default); the grains it
+ * borrows go as it bursts, a few each frame, while the dust spreads (they are spread over the credit, and the burst
+ * over the box). Reduced motion has no burst: they go at UI_SPL_LOGO, when the sand has faded out. The logo and the
+ * sprinkle have GRAINS' n, as before. A cut in the credit's beat: they go over the same 150 ms from the cut (reduced
+ * motion: once the credit has faded out, UI_SPL_RM_FADE after it) */
+static uint32_t ui_splash_grains(uint32_t t, uint32_t n, uint32_t ncr)
+{
+    uint32_t a = UI_SPL_BURST, b = UI_SPL_LOGO;
+    if (ui_st->reduced_motion)
+        a = b = ui_spl_spr < UI_SPL_LOGO ? ui_spl_spr + UI_SPL_RM_FADE : UI_SPL_LOGO;
+    else if (ui_spl_spr < UI_SPL_BURST)
+        a = ui_spl_spr, b = ui_spl_spr + (UI_SPL_LOGO - UI_SPL_BURST);
+    if (t < a)
+        return ncr;
+    if (t >= b)
+        return n;
+    return ncr - (uint32_t)((float)(ncr - n) * ui_ramp(t, a, b) + 0.5f);
+}
+
+/* the splash's sand at t ms (spec §6.7): the credit springs in from the dusting, holds, bursts; the logo springs in,
+ * holds, bursts into the sprinkle as the plate fades in. Reduced motion (§6.8): no grain flies; each figure is put
+ * in place unseen and the sand fades in and out (sd_fade, the sweep's), and the plate fades in as usual. The burst
+ * starts at ui_spl_spr: UI_SPL_SPRINKLE, or a cut's frame, from wherever the grains are (reduced motion: the figure
+ * on screen, as it was at the cut, fades out) */
+static void ui_splash_beat(uint32_t t)
+{
+    float fade = 1.0f;
+    uint32_t tf = t < ui_spl_spr ? t : ui_spl_spr;   /* the figure's own time: it stops where the burst begins */
+    if (!ui_st->reduced_motion) {
+        if (t >= ui_spl_spr)
+            sd_splash_step(SD_SPL_SPRINKLE, 8.3f);
+        else if (t < UI_SPL_BURST)
+            sd_splash_step(SD_SPL_CREDIT, t < UI_SPL_CR_HOLD ? 9.0f : 0.0f);
+        else if (t < UI_SPL_LOGO)
+            sd_splash_step(SD_SPL_SCATTER, 14.0f);
+        else
+            sd_splash_step(SD_SPL_LOGO, t < UI_SPL_LG_HOLD ? 9.0f : 0.0f);
+    } else if (t < ui_spl_spr + UI_SPL_RM_FADE) {
+        if (tf < UI_SPL_LOGO) {
+            sd_splash_step(SD_SPL_CREDIT, 0.0f);
+            fade = ui_ramp(tf, 0u, UI_SPL_RM_FADE) * (1.0f - ui_ramp(tf, UI_SPL_BURST, UI_SPL_LOGO));
+        } else {
+            sd_splash_step(SD_SPL_LOGO, 0.0f);
+            fade = ui_ramp(tf, UI_SPL_LOGO, UI_SPL_LOGO + UI_SPL_RM_FADE);
+        }
+        fade *= 1.0f - ui_ramp(t, ui_spl_spr, ui_spl_spr + UI_SPL_RM_FADE);
+    } else {
+        sd_splash_step(SD_SPL_SPRINKLE, 0.0f);
+        fade = ui_ramp(t, ui_spl_spr + UI_SPL_RM_FADE, ui_spl_end);
+    }
+    pl_sa = ui_ramp(t, ui_spl_spr, ui_spl_end);
+    if (fade != sd_fade) {                    /* (the sand's tone map, again) */
+        sd_fade = fade;
+        pl_colors();
+    }
 }
 
 /* the key point nearest plate (u, v) */
@@ -202,7 +290,7 @@ static uint32_t ui_plate_hash(uint32_t ov)
 
 void ui_frame(const cy_ui_state_t *st)
 {
-    uint32_t t0 = plat_ticks24(), since, n, el, period;
+    uint32_t t0 = plat_ticks24(), since, n, ncr, el, period;
     int splash, due, pre, phys, used_pre = 0, anim, ova = 0, whole = 0, rebuilt = 0;
     ui_st = st;
     ui_now = st->now;
@@ -216,7 +304,7 @@ void ui_frame(const cy_ui_state_t *st)
         ui_spr_seen = st->sprinkle_t, ui_swp_seen = st->sweep_t;
         ui_fc_seen = ui_fc->seq;
         ui_keymode_seen = st->keymode;
-        ui_splash_done = st->now - st->boot_t >= 1600u;
+        ui_splash_done = st->now - st->boot_t >= ui_spl_end;
         if (!ui_splash_done) {                /* the host never ran app_splash: the screen starts void here */
             lcd_fill(0, 0, 240, 240, UI_C_VOID);
             sd_n = (uint16_t)(st->grains < 600u ? 600u : st->grains > SD_MAX ? SD_MAX : st->grains);
@@ -224,10 +312,22 @@ void ui_frame(const cy_ui_state_t *st)
         }
     }
     since = st->now - st->boot_t;
-    splash = !ui_splash_done && since < 1600u;
-    if (!splash && !ui_splash_done) {         /* 1600 ms: the chrome appears, the plate is whole */
+    if (ui_spl_cut) {                         /* a key, button or detent: the burst into the plate now (once; one in
+                                               * the burst or after the splash changes nothing) */
+        ui_spl_cut = 0;
+        if (!ui_splash_done && since < ui_spl_spr)
+            ui_spl_spr = since, ui_spl_end = since + UI_SPL_OUT;
+    }
+    splash = !ui_splash_done && since < ui_spl_end && !ui_spl_skip;
+    if (!splash && !ui_splash_done) {         /* ui_spl_end: the chrome appears, the plate is whole */
         ui_splash_done = 1;
         ui_full = 1;
+        sd_fade = 1.0f;                       /* (reduced motion's last fade, finished: pl_colors sees it) */
+        if (since < ui_spl_end) {             /* (skipped: the sand as the splash leaves it, an even sprinkle) */
+            sd_n = (uint16_t)(st->grains < 600u ? 600u : st->grains > SD_MAX ? SD_MAX : st->grains);
+            sd_splash_step(SD_SPL_SPRINKLE, 0.0f);
+            sd_rebin = 1;
+        }
     }
     ui_events(!splash);
     el = st->now - ui_chrome_t;               /* the frame's own time, for the fades and tweens */
@@ -257,11 +357,14 @@ void ui_frame(const cy_ui_state_t *st)
 #endif
     if (st->reduced_motion && ui_fps > 20)    /* reduced motion: the sand at 20 Hz (§6.8) */
         ui_fps = 20;
-    /* due: this tick draws; pre: it does not, the next one will (ticks are >= 16 ms apart): the physics now */
+    /* due: this tick draws; pre: it does not, the next one will (ticks are >= 16 ms apart): the physics now. The
+     * splash keeps the same pace (v1.1 branding: it lasts 3.15 s, so a player's first chords can land in it, and a
+     * splash frame on every tick left the governor and the note path a tick every 60 ms on a slow chip under load);
+     * its grains' step and binning go on the tick before its drawing, as the sand's physics does */
     period = 1000u / ui_fps;
-    due = splash || ui_full || ui_fps >= 60 || st->now - ui_draw_t + 4u >= period;
+    due = (ui_full && !splash) || ui_fps >= 60 || st->now - ui_draw_t + 4u >= period;
     pre = !due && !ui_pre && st->now - ui_draw_t + 4u + 16u >= period;
-    phys = pre || (due && !ui_pre) || splash;
+    phys = pre || (due && !ui_pre);
     if (due) {
         ui_draw_t = st->now;
         used_pre = ui_pre && !splash;
@@ -280,7 +383,11 @@ void ui_frame(const cy_ui_state_t *st)
 #if !defined(PLAT_HOST) || defined(UI_TEST_PACING)
         if (st->cpu_pct > 90u && n > 1200u)   /* overloaded: at most 1,200 grains */
             n = 1200u;
+        if (st->cpu_pct > 90u && splash)      /* (and the credit with them, for the rest of the splash: a count that
+                                               * came and went would reshuffle its grains) */
+            ui_spl_light = 1;
 #endif
+        ncr = ui_spl_light ? n : SD_MAX;      /* the splash's credit: every grain there is (ui_splash_grains) */
         if (!splash) {                        /* GRAINS is for the reference circle: a smaller plate gets fewer, so
                                                * every shape shows the same density (at least 600) */
             uint32_t na = (uint32_t)((float)n * fm_minf(pl_area, 1.0f) + 0.5f);
@@ -294,6 +401,8 @@ void ui_frame(const cy_ui_state_t *st)
                 sd_nfall++;
             }
         }
+        if (splash)
+            n = ui_splash_grains(since, n, ncr);
         if (sd_n != n)
             sd_rebin = 1;
         sd_n = (uint16_t)n;
@@ -317,12 +426,23 @@ void ui_frame(const cy_ui_state_t *st)
         UI_POLL();                            /* (the app's note path: see pl_render) */
 #endif
     }
-    if (splash) {                             /* spec §6.7: grains spring onto the logo, hold, then burst */
-        sd_splash_step(since < 700u ? 0 : since < 1100u ? 1 : 2);
-        pl_sa = since < 1100u ? 0.0f : (float)(since - 1100u) * (1.0f / 500.0f);
-        sd_bin();
-        pl_render(1, PL_ALL);
-        whole = 1;
+    if (splash) {                             /* spec §6.7: the credit, then the logo, then the plate */
+        if (phys) {
+            ui_splash_beat(since);
+#ifdef UI_POLL
+            UI_POLL();                        /* (the app's note path between the splash's steps too: with the audio
+                                               * near full, the main loop runs at a tenth of its speed, and a chord's
+                                               * notes would wait for the frame together, landing in one block) */
+#endif
+            sd_bin();
+#ifdef UI_POLL
+            UI_POLL();
+#endif
+        }
+        if (due) {
+            pl_render(1, PL_ALL);
+            whole = 1;
+        }
     } else {
         uint32_t ps, ov, pulse, mask;
         pl_sa = 1.0f;

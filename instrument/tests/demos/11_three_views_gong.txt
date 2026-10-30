@@ -5,6 +5,8 @@
 #   tools/render_demos.sh renders it: build/demos/11_three_views_gong.wav (24-bit), .mp3 and .gif (the screen every 250 ms)
 shotmode 1
 master 4096
+# (no boot splash: the film starts on the plate)
+splash 0
 wait 1700
 tour 0
 preset 7

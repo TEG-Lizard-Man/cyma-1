@@ -42,6 +42,16 @@ void cy_engine_latch(int on);
 void cy_engine_damp(int on);
 void cy_engine_panic(void);
 void cy_engine_set_mode_budget(int n);
+void cy_engine_set_bow_cap(int n);      /* (v1.1) the device governor's cap on held bowed notes, 1..CY_MAX_BOWED */
+void cy_engine_set_tail_cap(int n);     /* (v1.1) the device governor's cap on released notes still ringing, 0..8 */
+void cy_engine_tails_off(void);         /* (v1.1) the device governor: released notes ringing now fade over 5 ms */
+void cy_engine_restart(int hand);       /* (v1.1.1, additive) everything heard fades out over 8.7 ms with the patch and
+                                         * plate it was playing, then the engine and the room start again from cold (as
+                                         * cy_engine_init and cy_fx_init leave them; the queue kept) with, as a first
+                                         * patch: hand 0, the patch in force then; hand 1, the next one set after
+                                         * cy_engine_restart_ready() says so (it stays silent until then). The events
+                                         * after it wait for that. Publish no geometry or patch meanwhile */
+int cy_engine_restart_ready(void);      /* (v1.1.1) a hand-over restart has faded out: set the geometry, then the patch */
 void cy_engine_render(int32_t *lr, uint32_t n, uint32_t master_q12);
 void cy_engine_telemetry_get(cy_telemetry_t *out);
 int cy_engine_event(cy_uievent_t *e);

@@ -58,6 +58,8 @@ void cy_fx_process(float *l, float *r, uint32_t n, uint32_t m, int32_t *lr)
     }
 }
 void cy_fx_reset(void) {}
+void cy_fx_clear(void) {}                /* (v1.1.1: cy_engine_restart's) */
+void cy_fx_snap(void) {}
 void cy_fx_meter(cy_fx_meter_t *m) { memset(m, 0, sizeof *m); }
 uint32_t cy_fx_latency(void) { return 0; }
 #endif
@@ -357,6 +359,14 @@ static double peak(const float *x, size_t a, size_t b)
     return p;
 }
 static double db(double a) { return 20.0 * log10(a + 1e-30); }
+static int32_t peak_q32(const int32_t *x, size_t n)     /* (v1.1.1) the largest |q| of an int32 output */
+{
+    int32_t p = 0;
+    size_t i;
+    for (i = 0; i < n; i++)
+        p = x[i] > p ? x[i] : -x[i] > p ? -x[i] : p;
+    return p;
+}
 /* Hann-windowed DFT magnitude at f over x[a..b) */
 static double dft_mag(const float *x, size_t a, size_t b, double f)
 {
@@ -1322,6 +1332,75 @@ static void t_damp_panic_midi(void)
     (void)c_db;
 }
 
+/* (v1.1.1) cy_engine_restart, the boot logo's two hand-overs. What is heard fades out over CY_RESTART_FADE renders
+ * as the old sound times a raised cosine (a patch set meanwhile is not heard in it); a hand-over (1) then waits silent,
+ * its events held, for the next patch and takes it as a first one; and from there a note renders bit for bit as on a
+ * fresh engine. A restart (0) takes the patch in force at once. The output read is lr, after the stub fx */
+static void rs_run(int nb, int32_t *dst)
+{
+    int i, j;
+    for (i = 0; i < nb; i++) {
+        render1();
+        for (j = 0; j < (int)CY_BLOCK; j++)
+            dst[i * (int)CY_BLOCK + j] = blk[2 * j];
+    }
+}
+static void t_restart(void)
+{
+    static int32_t u[16 * CY_BLOCK], f[16 * CY_BLOCK], ref[200 * CY_BLOCK], aft[200 * CY_BLOCK];
+    cy_patch_t P2;
+    double worst = 0.0, pk = 0.0;
+    int i, diff = 0, held, ready;
+    SAY("restart (v1.1.1: the boot logo's hand-overs)\n");
+    patch_default();
+    P.decay_mul = 4.0f, P.noise = 0.0f, P.hardness = 0.7f;
+    geom_set(SET_PLATE, 0.62, 0.40);
+    eng_reset();                                         /* the untouched: a loud note, 16 renders from 300 ms */
+    cy_engine_note_on(-1, 60, 120);
+    run_ms(300);
+    rs_run(16, u);
+    eng_reset();                                         /* the same, a hand-over there, another patch set at once */
+    cy_engine_note_on(-1, 60, 120);
+    run_ms(300);
+    cy_engine_restart(1);
+    P2 = P;
+    P2.decay_mul = 0.2f, P2.level_db = 6.0f, P2.tension_st = -12.0f;
+    cy_engine_set_patch(&P2);
+    cy_engine_note_on(-1, 64, 100);                      /* (held behind the restart) */
+    rs_run(16, f);
+    for (i = 0; i < 16 * (int)CY_BLOCK; i++) {
+        int j = i + 1;
+        double g = j >= 3 * (int)CY_BLOCK ? 0.0 : 0.5 + 0.5 * cos(T_PI * j / (3.0 * CY_BLOCK));
+        worst = fmax(worst, fabs((double)f[i] - (double)u[i] * g));
+        pk = fmax(pk, fabs((double)u[i]));
+    }
+    held = live_voices();
+    ready = cy_engine_restart_ready();
+    CHECK(worst <= 2.0, "restart fade: %.0f LSB off the old sound x the raised cosine", worst);
+    CHECK(ready && held == 0, "hand-over: not waiting silent after the fade (ready %d, voices %d)", ready, held);
+    cy_engine_set_patch(&P);                             /* the hand-over's patch: the note goes with it */
+    rs_run(200, aft);
+    CHECK(!cy_engine_restart_ready() && cy_e.decay == P.decay_mul, "hand-over: the patch not taken as a first one");
+    eng_reset();                                         /* the reference: a fresh engine, the note at render 0 */
+    cy_engine_note_on(-1, 64, 100);
+    rs_run(200, ref);
+    for (i = 0; i < 200 * (int)CY_BLOCK; i++)
+        diff += aft[i] != ref[i];
+    CHECK(diff == 0 && peak_q32(ref, 200 * CY_BLOCK) > 0, "after a hand-over, %d samples differ from a fresh engine's", diff);
+    SAY("  fade: within %.0f LSB of the old sound x the raised cosine (peak %.0f); then silent, held; the note after "
+        "the hand-over: %d samples off a fresh engine's\n", worst, pk, diff);
+    eng_reset();                                         /* restart (0): the patch in force, at once */
+    cy_engine_note_on(-1, 60, 120);
+    run_ms(300);
+    cy_engine_restart(0);
+    cy_engine_note_on(-1, 64, 100);
+    rs_run(3, f);
+    rs_run(200, aft);
+    for (i = 0, diff = 0; i < 200 * (int)CY_BLOCK; i++)
+        diff += aft[i] != ref[i];
+    CHECK(diff == 0 && !cy_engine_restart_ready(), "restart (0): %d samples off a fresh engine's", diff);
+}
+
 /* fix-dsp regressions (the review's verified findings): each case failed before its fix */
 static int fading_slots(void)
 {
@@ -1869,6 +1948,7 @@ int main(int argc, char **argv)
     t_morph_glide();
     t_bloom();
     t_damp_panic_midi();
+    t_restart();
     t_fixes();
     t_telemetry();
     t_determinism();

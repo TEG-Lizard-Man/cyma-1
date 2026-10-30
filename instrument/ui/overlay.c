@@ -4,10 +4,10 @@
  *
  * In the plate box: the focus pill (a knob was touched: its value large, top-left, where it does not hide the
  * figure the knob is changing), the bottom readout (SHAPE, PRESETS, ALGORITHM; the morph-scrub's pair), the hint
- * line, the tour chips with their chevrons pointing off-screen at the physical control, and the splash's tagline. In
- * the footer: messages, the SAVE question, the USB question of the sound transfer (docs/CYMA-1-sounds-spec.md §6.6),
- * the morph scrubber. A question on the footer puts the plate's hint line down; a pitch message (OCTAVE, TRANSPOSE)
- * leaves the footer's name in place and flashes its badge (chrome.c).
+ * line, the tour chips with their chevrons pointing off-screen at the physical control, and the splash's lines (the
+ * credit's PRESENT, the logo's tagline). In the footer: messages, the SAVE question, the USB question of the sound
+ * transfer (docs/CYMA-1-sounds-spec.md §6.6), the morph scrubber. A question on the footer puts the plate's hint
+ * line down; a pitch message (OCTAVE, TRANSPOSE) leaves the footer's name in place and flashes its badge (chrome.c).
  *
  * ui_ov_prepare runs once a frame: it advances the fades (80 ms in, 1.2 s hold, 150 ms out) and lays out the
  * text, and returns a signature of everything visible, so the plate redraws when an overlay changes and not
@@ -326,12 +326,21 @@ static void ui_ov_rails(sf_t *sf)
 static void ui_ov_plate(sf_t *sf, int splash)
 {
     const cy_ui_state_t *st = ui_st;
-    if (splash) {                             /* the tagline under the logo, in then out */
-        uint32_t t = ui_now - st->boot_t;
-        float a = t < 700u ? 0.0f : t < 1100u ? (float)(t - 700u) * (1.0f / 400.0f) : t < 1400u ? 1.0f - (float)(t - 1100u) * (1.0f / 300.0f) : 0.0f;
+    if (splash) {                             /* PRESENT under the credit, then the tagline under the logo: each in
+                                               * through its figure's hold, out as the figure bursts, on one line (a
+                                               * cut: the line shown then, as it was, fades out as the burst starts) */
+        uint32_t t = ui_now - st->boot_t, tf = t < ui_spl_spr ? t : ui_spl_spr;
+        float a = ui_ramp(tf, UI_SPL_CR_HOLD, UI_SPL_CR_HOLD + 300u) * (1.0f - ui_ramp(tf, UI_SPL_BURST, UI_SPL_LOGO));
+        const char *s = UI_SPL_PRESENT;
+        int32_t track = 3;                    /* (spaced out: the credit's small line) */
+        if (tf >= UI_SPL_LOGO) {
+            a = ui_ramp(tf, UI_SPL_LG_HOLD, UI_SPL_LG_HOLD + UI_SPL_TAG_IN);
+            s = APP_TAGLINE, track = 1;
+        }
+        a *= 1.0f - ui_ramp(t, ui_spl_spr, ui_spl_spr + 300u);
         if (a > 0.0f && sf_hits(sf, 28, 160, 212, 160 + FONT_CY_LBL.h)) {
-            int32_t w = sf_text_w(&FONT_CY_LBL, APP_TAGLINE, 1);
-            sf_text(sf, 120 - w / 2, 160, &FONT_CY_LBL, APP_TAGLINE, UI_C_INK_DIM, sf_cov(a, 32u), 1);
+            int32_t w = sf_text_w(&FONT_CY_LBL, s, track);
+            sf_text(sf, 120 - w / 2, 160, &FONT_CY_LBL, s, UI_C_INK_DIM, sf_cov(a, 32u), track);
         }
         return;
     }

@@ -26,17 +26,27 @@ build/cyma-1.dis (the instruction after each call), so nothing is hard-coded and
 Scenarios (each from a fresh boot, so the first-boot tour is part of it, as for a new owner):
   play    preset 01, 4-note MIDI chords every 500 ms with a lean, and a key on the panel between them (10 s)
   aether  preset 21 AETHER (a bowed, morphing drone) chosen with PRESETS, a held 4-note bowed chord, pressure (8 s)
-  held    preset 01, one key held from 2.5 s: the screen's cost while a note rings, frames of 3-4 s (6 s)
+  held    preset 01, one key held from 4.5 s: the screen's cost while a note rings, frames of 5.5-6.5 s (7.5 s)
   idle    the tour taken (a note, a lean, SELECT, ALGORITHM, PRESETS), DAMP, then silence (9 s)
+The screen's windows start once the boot splash is over: app_ui_init runs 0.62 s after reset in fm1-emu, and the
+splash (ui/ui.c UI_SPL_END) takes 9.15 s since v1.1.2's longer credit hold (6.15 s in v1.1.1, 3.15 s with v1.1's
+credit, 1.6 s before), so left alone it ends at 9.77 s. But a key, button or detent cuts it short: its burst into the plate starts at the next
+frame and the chrome draws 0.5 s later. play's first panel key (2.25 s) and aether's PRESETS detent (1.7 s) cut it,
+so their screens are live from about 2.75 s and 2.2 s, before their windows (from 4 s). held moved whole, by 2 s,
+with the credit: its key goes down at 4.5 s (2.5 s), half-way between two of fm1-base's once-a-second usb_start
+stalls (a key at 4.0 s waits out one: 36 ms). That key now cuts the splash, so the chrome draws at about 5.0 s and
+the sand starts to follow the note there; its window moved by 0.5 s with that, to 5.5-6.5 s (5-6 s: the chrome's
+first whole draw and the sand's first jump inside it), 0.5-1.5 s after the plate goes live as it was 0.5-1.5 s
+after the strike before.
 
 Gates (the defaults; each a flag so the integrator can ratchet them):
   render   the slowest audio block <= 85 % of the half (2.90 ms), every scenario
   xruns    fm1b_dbg.late == 0 (the DMA never overtook the render), every scenario, shipping governor
   ui_cpu   UI frame CPU, median while notes ring <= 8 ms (spec §6.9 asks 6 ms; reported beside it), every scenario
            that plays
-  ui_steps UI frame wall time in instructions, median over 3-4 s of `held` <= 4.4 M (a regression ceiling: the review's
-           4.0 M over its 3.75 M at the stock 240 MHz, which reads 4.08 M at 205 MHz; the target is 1.6 M, 6 ms of CPU
-           plus the audio ISR's share)
+  ui_steps UI frame wall time in instructions, median over 5.5-6.5 s of `held` <= 4.4 M (a regression ceiling: the
+           review's 4.0 M over its 3.75 M at the stock 240 MHz, which reads 4.08 M at 205 MHz; the target is 1.6 M,
+           6 ms of CPU plus the audio ISR's share)
   latency  input to sound (the next block after the engine got the note, plus the half the DMA then plays), p90
            <= 15 ms, keys and MIDI apart
   idle     plate redraws in the silent idle window == 0
@@ -117,7 +127,7 @@ def scen_play():
         k = keys[i % len(keys)]
         ev.append((t + 250, f"n{k}", t + 400))
         inputs.append({"t_ms": t + 250, "kind": "key", "key": k, "note": 53 + k})
-    return {"ms": 10000, "events": ev, "inputs": inputs, "busy": (3.0, 10.0), "snaps": [4300, 9300],
+    return {"ms": 10000, "events": ev, "inputs": inputs, "busy": (4.0, 10.0), "snaps": [4300, 9300],
             "about": "preset 01 SINGING BOWL as shipped: 16 four-note MIDI chords 500 ms apart with a lean (channel "
                      "pressure 80), and a panel key between each chord"}
 
@@ -132,16 +142,19 @@ def scen_aether():
         ev.append(midi(7900, 0x80, n, 0))
     ev += [midi(2700, 0xD0, 90), midi(5000, 0x90, 67, 100), midi(7900, 0x80, 67, 0)]
     inputs.append({"t_ms": 5000, "kind": "midi", "note": 67})
-    return {"ms": 8000, "events": ev, "inputs": inputs, "busy": (3.0, 8.0), "snaps": [2300, 6000],
+    return {"ms": 8000, "events": ev, "inputs": inputs, "busy": (4.0, 8.0), "snaps": [3900, 6000],
             "about": "preset 21 AETHER (BOW, MORPH 60 %) chosen with PRESETS: a held, bowed 4-note chord with "
                      "channel pressure 90, a fifth note at 5 s"}
 
 
 def scen_held():
-    """one key held from 2.5 s (the review's measurement of the screen's cost: the median frame over 3-4 s)"""
-    return {"ms": 6000, "events": [(2500, "n7", 4500)], "inputs": [{"t_ms": 2500, "kind": "key", "key": 7, "note": 60}],
-            "busy": (3.0, 4.0), "ui_steps": True, "snaps": [3500],
-            "about": "preset 01, first boot, one key (C4) held from 2.5 s to 4.5 s; the frames of 3-4 s"}
+    """one key held from 4.5 s (the review's measurement of the screen's cost: the median frame 0.5-1.5 s into the
+    note; 2.5 s and 3-4 s until the splash's credit made the splash end at 3.77 s; 5-6 s until the key began to cut
+    the splash, the chrome at 5.0 s: 0.5-1.5 s after the plate goes live)"""
+    return {"ms": 7500, "events": [(4500, "n7", 6500)], "inputs": [{"t_ms": 4500, "kind": "key", "key": 7, "note": 60}],
+            "busy": (5.5, 6.5), "ui_steps": True, "snaps": [5500],
+            "about": "preset 01, first boot, one key (C4) held from 4.5 s to 6.5 s (it cuts the splash short: the "
+                     "chrome at 5.0 s); the frames of 5.5-6.5 s"}
 
 
 def scen_idle():
@@ -150,7 +163,7 @@ def scen_idle():
           (2300, "SELECT:+1", None), (2500, "ALGO:+3", None), (2700, "PRESET:+1", None), (3000, "PRESET:-1", None),
           (3300, "SELECT:-1", None), (3600, "REC", 4600)]
     inputs = [{"t_ms": 1800, "kind": "midi", "note": 60}]
-    return {"ms": 9000, "events": ev, "inputs": inputs, "busy": None, "idle": (7.0, 9.0), "snaps": [2600, 8500],
+    return {"ms": 9000, "events": ev, "inputs": inputs, "busy": None, "idle": (7.0, 9.0), "snaps": [4000, 8500],
             "about": "first boot: a note, a lean, SELECT, ALGORITHM (a full turn: back to MALLET), PRESETS (there and "
                      "back), then DAMP held 1 s; the idle window is 7-9 s"}
 
@@ -635,10 +648,10 @@ def write_report(out, res):
         for key, label in (("ui_busy", "screen, notes ringing"), ("ui_idle", "screen, idle")):
             u = r.get(key)
             if u and not u["n"]:
-                w(f"   {label} {u['window'][0]:.0f}-{u['window'][1]:.0f} s: no frames"
+                w(f"   {label} {u['window'][0]:g}-{u['window'][1]:g} s: no frames"
                   + (f"; plate redraws {u['plate_renders']}" if u.get("plate_renders") is not None else ""))
             elif u:
-                w(f"   {label} {u['window'][0]:.0f}-{u['window'][1]:.0f} s: {u['n']} frames ({u['fps']:.1f}/s); wall "
+                w(f"   {label} {u['window'][0]:g}-{u['window'][1]:g} s: {u['n']} frames ({u['fps']:.1f}/s); wall "
                   f"median {u['wall_median_ms']:.1f} ms ({u['steps_median'] / 1e6:.2f} M instr), CPU median "
                   f"{u['cpu_median_ms']:.1f} ms, p90 {u['cpu_p90_ms']:.1f} ms; audio ISR {u['isr_median'] / DEV_HZ * 1e3:.1f} ms, "
                   f"LCD wait {u['lcd_median'] / DEV_HZ * 1e3:.1f} ms a frame"

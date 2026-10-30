@@ -38,6 +38,12 @@
 #define CY_NALL (CY_SSURF + 1)
 #define CY_IS_FADE(i) ((uint32_t)(i) - CY_SFADE < CY_NFADE)
 #define CY_STEAL_FADE_S 0.005f           /* a stolen voice fades over 5 ms (spec §3.8) */
+#define CY_GOV_FADE_S 0.05f              /* a held bowed note past a lowered bow cap fades over 50 ms (v1.1) */
+#define CY_GOV_CHORD_R 17u               /* (v1.1) renders (~50 ms): bowed notes this young are one chord (cy_alloc) */
+#define CY_TAILS_HOLD 2u                 /* (v1.1) renders (5.8 ms) the events after CY_EV_TAILS wait for its 5 ms fade */
+#define CY_RESTART_FADE 3u               /* (v1.1.1) renders (8.7 ms) a restart's raised-cosine fade of the output lasts,
+                                          * with the patch and the plate it began with; the next render starts the
+                                          * engine and the room again from cold (cy_engine_restart) */
 #define CY_SURF_XFADE_S 0.1f             /* the SURFACE plate an OCT change leaves behind rings out over 100 ms */
 #define CY_BOW_PHI 0.02f                 /* a mode couples to the bow when |phi(bp)| >= this (see bow.c) */
 #define CY_EVQ 128u                      /* main -> render events (power of two) */
@@ -96,7 +102,8 @@
 #define CY_FINGER_K 40.0f
 #define CY_TOUCH_FLOOR 0.4f
 
-enum { CY_EV_ON, CY_EV_OFF, CY_EV_FREEZE, CY_EV_LATCH, CY_EV_DAMP, CY_EV_PANIC, CY_EV_SEED };
+enum { CY_EV_ON, CY_EV_OFF, CY_EV_FREEZE, CY_EV_LATCH, CY_EV_DAMP, CY_EV_PANIC, CY_EV_SEED, CY_EV_TAILS,
+       CY_EV_RESTART };
 typedef struct { uint8_t type, note, vel; int8_t key; uint32_t arg; } cy_ev_t;
 
 /* One resonator slot: up to 32 complex one-poles z' = r e^{iw} z + b x, heard through Im z (spec §3.5). Structure of
@@ -193,7 +200,14 @@ typedef struct {
     volatile uint8_t chan;                   /* channel pressure / CC1 */
     volatile float bend;                     /* semitones */
     volatile int32_t budget;
+    volatile int32_t bow_cap;                /* (v1.1) held bowed notes allowed: CY_MAX_BOWED unless the governor cuts it */
+    volatile int32_t tail_cap;               /* (v1.1) released notes left ringing: CY_NVOICES unless the governor cuts it */
     uint32_t dropped;                        /* events lost to a full queue */
+    volatile uint8_t rs_ready;               /* (v1.1.1, the render's) a hand-over restart has faded out and waits for
+                                              * the main loop's patch (cy_engine_restart_ready) */
+    volatile uint32_t rs_push, rs_take;      /* (v1.1.1) restarts queued (the main loop's count) and applied (the
+                                              * render's): while they differ the render takes no new patch, so a
+                                              * restart fades out on the patch in force when it was queued */
 } cy_q_t;
 
 /* the render's side */
@@ -212,6 +226,13 @@ typedef struct {
     uint16_t budget;
     uint8_t frozen, latched, damping, inited, last_exc;
     uint8_t bow_ccap;                    /* coupled modes a bowed slot may run this render (bow.c; engine.c sets it) */
+    uint8_t bow_cap;                     /* (v1.1) bowed notes allowed this render: cy_q.bow_cap, read with the budget */
+    uint32_t ev_hold;                    /* (v1.1) renders the queued events still wait (a CY_EV_TAILS fade; 0: none) */
+    uint8_t tail_cap;                    /* (v1.1) released notes left ringing this render: cy_q.tail_cap */
+    uint8_t restart;                     /* (v1.1.1, cy_engine_restart) 1: fading the output out (CY_EV_RESTART), the
+                                          * patch held; 2: faded and cleared, silent until the main loop's next patch */
+    uint8_t rs_hand;                     /* ... 1: it waits for that patch (a hand-over); 0: the patch in force then */
+    uint32_t rs_n, rs_pseq;              /* ... samples of its fade done; cy_q.pseq when it began to wait */
     /* smoothed patch values, one step a sub-block (~10 ms) */
     float decay, tension, palm, force, grit, density, noise, damper, bloom, stretch, vib, lev, onorm, gpitch;
     float vib_ph;                        /* turns */

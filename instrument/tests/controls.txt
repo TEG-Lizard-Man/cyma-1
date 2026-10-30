@@ -19,7 +19,9 @@ expect octave 0
 expect frozen 0
 expect latched 0
 expect edited 0
-expect voices 0
+# (v1.1.1: at 1.75 s the boot logo's E and G still ring, 54 dB down; the first tap below ends it)
+expect logo 2
+expect voices 2
 #
 # ---- pages: HOME ENV FX LFO GLO. The current page's LED bright (3), the others a glow (1)
 expect ledb_HOME 3
@@ -42,8 +44,18 @@ tap GLO
 expect page 4
 expect ledb_GLO 3
 expect ledb_LFO 1
-# GLO again: back to the page before it
+# (v1.1) GLO again: GLOBAL's layer B (THEME GRAINS MOTION DETAIL), latched, the SEL LED bright; again: layer A.
+# (v1.0's GLO again went back to the page before it)
 tap GLO
+expect page 4
+expect layer 1
+expect ledb_SEL 3
+expect ledb_GLO 3
+tap GLO
+expect page 4
+expect layer 0
+expect ledb_SEL 1
+tap LFO
 expect page 3
 expect ledb_LFO 3
 expect ledb_GLO 1
@@ -71,6 +83,93 @@ release SEL
 wait 150
 expect layer 0
 expect ledb_SEL 1
+#
+# ---- (v1.1) the page's own button again: layer B, and it stays until the next tap of that button, a tap of SEL
+# alone (its LED is the one lit), or another page. The tap is decided at the button's release
+tap HOME
+expect page 0
+expect layer 1
+expect ledb_SEL 3
+tap HOME
+expect page 0
+expect layer 0
+expect ledb_SEL 1
+press HOME
+wait 20
+expect layer 0
+release HOME
+wait 40
+expect layer 1
+# SEL held with the latch on: still B; a combo (SEL+OCT+, the transpose) or a long hold does not let go of the latch
+press SEL
+tap OCT+
+release SEL
+wait 50
+expect transpose 1
+expect layer 1
+press SEL
+tap OCT-
+release SEL
+wait 50
+expect transpose 0
+expect layer 1
+press SEL
+wait 600
+release SEL
+wait 50
+expect layer 1
+expect ledb_SEL 3
+# a turn with SEL held is a combo too (SEL+K1 on layer B: TARGET)
+press SEL
+spin K1 1
+release SEL
+wait 50
+expect layer 1
+spin K1 -1
+wait 50
+# (v1.1 review) a tap of SEL alone: the latch lets go
+tap SEL
+expect page 0
+expect layer 0
+expect ledb_SEL 1
+# the page's button held 400 ms or more, or with another control, is no tap
+press HOME
+wait 600
+release HOME
+wait 40
+expect layer 0
+press HOME
+spin K1 1
+release HOME
+wait 40
+expect layer 0
+spin K1 -1
+wait 50
+# (v1.1 review) HOME landing just before SEL: no latch (v1.0 too missed COMPARE here, and left no state)
+press HOME
+wait 40
+press SEL
+wait 100
+release SEL
+release HOME
+wait 100
+expect layer 0
+expect compare 0
+expect ledb_SEL 1
+tap HOME
+expect layer 1
+tap ENV
+expect page 1
+expect layer 0
+press SEL
+wait 150
+expect layer 1
+release SEL
+wait 150
+expect layer 0
+tap HOME
+expect page 0
+expect layer 0
 #
 # ---- EDIT: SAND -> FIELD -> MESH -> SAND; LED 1 / 2 / 3
 tap EDIT
@@ -213,8 +312,19 @@ expect edited 0
 spin K1 -1
 release SEL
 wait 50
+# (v1.1) GLO again latches layer B: K1 is THEME without SEL held (CYMATIC -> PHOSPHOR and back), still no edit
+tap GLO
+expect layer 1
+spin K1 1
+wait 100
+expect p_THEME 100
+expect edited 0
+spin K1 -1
+wait 100
+expect p_THEME 0
 tap HOME
 expect page 0
+expect layer 0
 #
 # ---- ALGORITHM: MALLET -> BOW -> RAIN, wrapping both ways, one step a detent
 turn ALGO 1

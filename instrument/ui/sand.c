@@ -366,39 +366,60 @@ static void sd_sweep_tick(void)
     }
 }
 
-/* ---- the splash (spec §6.7): grains spring onto the CY_LOGO mask, hold, then burst into an even sprinkle ---- */
-static uint32_t sd_logo_n;               /* lit pixels in the mask */
+/* ---- the splash (spec §6.7): grains spring onto a mask, hold, then burst. Two masks: the boot's credit (CY_CREDIT,
+ * "TEAM EG &" over "LIZARD_MAN"), then the CY_LOGO; the last burst is into an even sprinkle on the plate ---- */
+typedef struct { const uint8_t *bits; int32_t w, h, x, y; uint32_t n; } sd_mask_t;   /* x, y: its top-left (box px) */
+static const sd_mask_t SD_CREDIT = {CY_CREDIT, CY_CREDIT_W, CY_CREDIT_H, (SD_PW - CY_CREDIT_W) / 2, 60, CY_CREDIT_N};
+static const sd_mask_t SD_LOGO = {CY_LOGO, CY_LOGO_W, CY_LOGO_H, 32, 72, CY_LOGO_N};   /* at screen (60, 108) */
+enum { SD_SPL_CREDIT, SD_SPL_LOGO, SD_SPL_SCATTER, SD_SPL_SPRINKLE };
 static uint32_t sd_hash(uint32_t i)
 {
     i ^= i >> 16, i *= 0x7FEB352Du, i ^= i >> 15, i *= 0x846CA68Bu, i ^= i >> 16;
     return i;
 }
-static int sd_logo_px(int32_t x, int32_t y)
+static int sd_mask_px(const sd_mask_t *m, int32_t x, int32_t y)
 {
-    return CY_LOGO[y * ((CY_LOGO_W + 7) / 8) + x / 8] >> (7 - (x & 7)) & 1;
+    return m->bits[y * ((m->w + 7) / 8) + x / 8] >> (7 - (x & 7)) & 1;
 }
 
-/* phase 0: toward the logo (tau 110 ms); 1: hold; 2: toward a fixed random inside point (tau 120 ms) */
-static void sd_splash_step(int phase)
+/* every grain toward its target in `to`: SD_SPL_CREDIT / SD_SPL_LOGO its share of the mask's lit pixels (the
+ * (k * lit / n)-th, k the grain's slot); SD_SPL_SCATTER a fixed random point in a disc over the box (the credit's
+ * burst); SD_SPL_SPRINKLE a fixed random point inside the plate. rate: 1/s of an exponential approach (9: tau
+ * 110 ms), 0 = exactly there (a hold, or reduced motion's cut). The logo's slots are the grains in order, as they
+ * always were; the credit's are a stride through them (k = i x 1237 mod n), so the grains it borrows above GRAINS
+ * (ui_splash_grains) come from all over it, not from the end of its last line */
+#define SD_SPL_STRIDE 1237u                   /* prime: coprime to every n (600..2000), so k -> i is a permutation */
+static uint32_t sd_spl_inv_n, sd_spl_inv = 1u;   /* the stride's inverse mod n, for that n */
+static void sd_splash_step(int to, float rate)
 {
-    uint32_t i, lit = 0, want;
+    const sd_mask_t *m = to == SD_SPL_CREDIT ? &SD_CREDIT : to == SD_SPL_LOGO ? &SD_LOGO : 0;
+    uint32_t k, lit = 0, want, n = sd_n ? sd_n : 1u, inv = 1u;
     int32_t cur = -1;                        /* the mask cursor (linear), lit = lit pixels in [0, cur] */
-    float kk = 1.0f - fm_expf(-ui_dt * (phase == 2 ? 8.3f : 9.0f));
-    if (!sd_logo_n) {
-        int32_t lx, ly;
-        for (ly = 0; ly < CY_LOGO_H; ly++)
-            for (lx = 0; lx < CY_LOGO_W; lx++)
-                sd_logo_n += (uint32_t)sd_logo_px(lx, ly);
-        if (!sd_logo_n)
-            sd_logo_n = 1;
+    float kk = rate > 0.0f ? 1.0f - fm_expf(-ui_dt * rate) : 1.0f;
+    if (to == SD_SPL_CREDIT) {               /* slot k is grain k x inv mod n (once per n: a search of < n steps) */
+        if (sd_spl_inv_n != n) {
+            uint32_t a = SD_SPL_STRIDE % n;
+            sd_spl_inv_n = n;
+            for (sd_spl_inv = 1u; sd_spl_inv < n && a * sd_spl_inv % n != 1u; sd_spl_inv++)
+                ;
+            if (sd_spl_inv >= n)             /* (not coprime: the grains in order) */
+                sd_spl_inv = 1u;
+        }
+        inv = sd_spl_inv;
     }
-    for (i = 0; i < sd_n; i++) {
+    for (k = 0; k < sd_n; k++) {
+        uint32_t i = inv == 1u ? k : k * inv % n;
         sd_grain_t *g = &sd_g[i];
         uint32_t h = sd_hash(i * 2654435761u + 17u);
         float tx, ty, nx, ny, d;
-        if (phase == 2) {                    /* a fixed target per grain: rehash until it lands inside */
-            uint32_t k, x = SD_PW * 128, y = SD_PW * 128;
-            for (k = 0; k < 8u; k++, h = sd_hash(h)) {
+#ifdef UI_POLL
+        if ((k & 511u) == 511u)              /* (the app's note path every 512 grains: see ui_frame's splash) */
+            UI_POLL();
+#endif
+        if (to == SD_SPL_SPRINKLE) {         /* a fixed target per grain: rehash until it lands inside (32 tries:
+                                              * with 8, a BAR's 1 in 6 that missed every time piled up in the centre) */
+            uint32_t j, x = SD_PW * 128, y = SD_PW * 128;
+            for (j = 0; j < 32u; j++, h = sd_hash(h)) {
                 uint32_t xx = (h & 0xFFFFu) * (SD_PW * 256 - 1) >> 16, yy = (h >> 16) * (SD_PW * 256 - 1) >> 16;
                 if (sd_cover(xx, yy) >= 128u) {
                     x = xx, y = yy;
@@ -406,19 +427,32 @@ static void sd_splash_step(int phase)
                 }
             }
             tx = (float)x, ty = (float)y;
-        } else {                             /* the (i * lit / n)-th lit pixel, found by walking the mask once */
-            int32_t lx, ly;
-            want = i * sd_logo_n / (sd_n ? sd_n : 1u);   /* (<= 2000 x 4800: no overflow) */
-            while (lit <= want && cur < CY_LOGO_W * CY_LOGO_H - 1) {
-                cur++;
-                lit += (uint32_t)sd_logo_px(cur % CY_LOGO_W, cur / CY_LOGO_W);
+        } else if (to == SD_SPL_SCATTER) {   /* an even dusting of a disc (r 90 px) over the box: rehash until in */
+            uint32_t j, x = SD_PW * 128, y = SD_PW * 128;
+            for (j = 0, h = sd_hash(h ^ 0x5CA77E2Bu); j < 8u; j++, h = sd_hash(h)) {
+                int32_t dx = (int32_t)((h & 0xFFFFu) * (SD_PW * 256 - 1) >> 16) - SD_PW * 128;
+                int32_t dy = (int32_t)((h >> 16) * (SD_PW * 256 - 1) >> 16) - SD_PW * 128;
+                if ((uint32_t)(dx * dx) + (uint32_t)(dy * dy) < 90u * 90u * 65536u) {
+                    x = (uint32_t)(dx + SD_PW * 128), y = (uint32_t)(dy + SD_PW * 128);
+                    break;
+                }
             }
-            lx = cur % CY_LOGO_W, ly = cur / CY_LOGO_W;
-            tx = ((float)(lx + 32) + (float)(h & 255u) * (1.0f / 256.0f)) * 256.0f;   /* logo at screen (60, 108) */
-            ty = ((float)(ly + 72) + (float)(h >> 8 & 255u) * (1.0f / 256.0f)) * 256.0f;
+            tx = (float)x, ty = (float)y;
+        } else {                             /* the (k * lit / n)-th lit pixel, found by walking the mask once */
+            int32_t lx, ly;
+            want = k * m->n / n;             /* (<= 2000 x 6912: no overflow) */
+            while (lit <= want && cur < m->w * m->h - 1) {
+                cur++;
+                lit += (uint32_t)sd_mask_px(m, cur % m->w, cur / m->w);
+            }
+            lx = cur % m->w, ly = cur / m->w;
+            tx = ((float)(lx + m->x) + (float)(h & 255u) * (1.0f / 256.0f)) * 256.0f;
+            ty = ((float)(ly + m->y) + (float)(h >> 8 & 255u) * (1.0f / 256.0f)) * 256.0f;
         }
-        nx = phase == 1 ? tx : (float)g->x + (tx - (float)g->x) * kk;
-        ny = phase == 1 ? ty : (float)g->y + (ty - (float)g->y) * kk;
+        nx = (float)g->x + (tx - (float)g->x) * kk;
+        ny = (float)g->y + (ty - (float)g->y) * kk;
+        if (kk >= 1.0f)
+            nx = tx, ny = ty;
         d = fm_fabsf(tx - nx) + fm_fabsf(ty - ny);
         g->x = (uint16_t)fm_clampf(nx, 0.0f, (float)(SD_PW * 256 - 1));
         g->y = (uint16_t)fm_clampf(ny, 0.0f, (float)(SD_PW * 256 - 1));

@@ -76,6 +76,10 @@ void cy_engine_init(void)
     cy_e.bow_key = -1;
     cy_e.obj = cy_geom_object();
     cy_q.budget = CY_BUDGET_DEFAULT;
+    cy_q.bow_cap = CY_MAX_BOWED;
+    cy_e.bow_cap = CY_MAX_BOWED;
+    cy_q.tail_cap = CY_NVOICES;
+    cy_e.tail_cap = CY_NVOICES;
     cy_tel.mode_budget = CY_BUDGET_DEFAULT;
 }
 void cy_engine_seed(uint32_t seed) { cy_push(CY_EV_SEED, 0, 0, 0, seed ? seed : 0x9E3779B9u); }
@@ -128,6 +132,18 @@ void cy_engine_latch(int on) { cy_push(CY_EV_LATCH, 0, 0, 0, on != 0); }
 void cy_engine_damp(int on) { cy_push(CY_EV_DAMP, 0, 0, 0, on != 0); }
 void cy_engine_panic(void) { cy_push(CY_EV_PANIC, 0, 0, 0, 0); }
 void cy_engine_set_mode_budget(int n) { cy_q.budget = n < CY_BUDGET_MIN ? CY_BUDGET_MIN : n > CY_BUDGET_MAX ? CY_BUDGET_MAX : n; }
+void cy_engine_set_bow_cap(int n) { cy_q.bow_cap = n < 1 ? 1 : n > CY_MAX_BOWED ? CY_MAX_BOWED : n; }
+void cy_engine_set_tail_cap(int n) { cy_q.tail_cap = n < 0 ? 0 : n > (int)CY_NVOICES ? (int)CY_NVOICES : n; }
+void cy_engine_tails_off(void) { cy_push(CY_EV_TAILS, 0, 0, 0, 0); }
+void cy_engine_restart(int hand)
+{
+    if (cy_q.ev_w - cy_q.ev_r >= CY_EVQ)   /* (a full queue drops it, as cy_push would: nobody renders) */
+        return;
+    cy_q.rs_push++;                      /* (first: from here the render takes no new patch until it has applied it) */
+    CY_BARRIER();
+    cy_push(CY_EV_RESTART, 0, 0, 0, hand != 0);
+}
+int cy_engine_restart_ready(void) { return cy_q.rs_ready; }
 
 void cy_engine_telemetry_get(cy_telemetry_t *out)
 {
@@ -333,8 +349,12 @@ static void cy_steal(int i)
 }
 
 /* allocation (spec §3.8): same key re-strike, a free slot, the quietest ringing slot, the oldest held one; frozen
- * slots last. BOW: at most CY_MAX_BOWED bowed slots, a fifth takes over the oldest. Returns the slot, re-strike in
- * *same. */
+ * slots last. BOW: at most CY_MAX_BOWED bowed slots (or the device governor's lower cap, v1.1), one more takes over the
+ * oldest. (v1.1) Under a cap the governor lowered, a bowed note past it while every bowed note is younger than
+ * CY_GOV_CHORD_R renders is the same chord's, and it does not start (-1): taking over notes that had only just begun
+ * cost a 5 ms steal-fade copy and a fresh bow per note, on top of the bows (fm1-emu at 1.6x: a 4-note AETHER chord onto
+ * two old tails, 102 % of a block; an 8-note chord, 93 %), and the chord sounds its first notes instead of its last.
+ * Returns the slot, re-strike in *same, or -1. */
 static int cy_alloc(int key, int note, int bow, int *same)
 {
     cy_eng_t *e = &cy_e;
@@ -359,7 +379,9 @@ static int cy_alloc(int key, int note, int bow, int *same)
                 if (ob < 0 || e->sl[i].age < e->sl[ob].age)
                     ob = i;
             }
-        if (nb >= CY_MAX_BOWED) {
+        if (nb >= (int)e->bow_cap) {
+            if (e->bow_cap < CY_MAX_BOWED && e->rnd - e->sl[ob].born < CY_GOV_CHORD_R)
+                return -1;               /* (v1.1: never with the caps at CY_MAX_BOWED, as on the host and the web) */
             cy_steal(ob);
             return ob;
         }
@@ -419,6 +441,8 @@ static void cy_tuned_on(int key, int note, int vel)
     int xt = e->p.exciter, same, i;
     cy_slot_t *sl;
     i = cy_alloc(key, note, xt == CY_EXC_BOW, &same);
+    if (i < 0)
+        return;                          /* (v1.1: a chord's bowed note past the device governor's cap) */
     sl = &e->sl[i];
     if (!same)
         cy_note_init(sl, key, note, vel, xt);
@@ -591,6 +615,20 @@ static void cy_panic_now(void)
     e->frozen = e->latched = e->damping = 0;
 }
 
+/* (v1.1) a slot the device governor lets go: it fades out in place over secs, a bow lifted at once (as a PANIC
+ * fades, but slower) */
+static void cy_gov_fade(cy_slot_t *sl, float secs)
+{
+    sl->fading = 1;
+    sl->fade_g = 1.0f;
+    sl->fade_dec = 1.0f / (secs * CY_FS);
+    sl->bowing = 0;
+    sl->bhold = 0;
+    sl->down = sl->lhold = 0;
+    sl->state = CY_VS_RING;
+    sl->gsig = -1.0f;
+}
+
 static void cy_apply(const cy_ev_t *ev)
 {
     cy_eng_t *e = &cy_e;
@@ -653,9 +691,62 @@ static void cy_apply(const cy_ev_t *ev)
     case CY_EV_SEED:
         e->rng = ev->arg;
         break;
+    case CY_EV_TAILS:                    /* (v1.1, the device governor) the released notes ringing now fade over 5 ms,
+                                          * a steal's fade, and the events after this one (the bowed chord's next notes)
+                                          * wait CY_TAILS_HOLD renders for it: a fading slot costs what it did ringing,
+                                          * so faded together with the chord's onset, the tails still peaked with it */
+        for (i = 0; i < CY_NVOICES; i++) {
+            cy_slot_t *sl = &e->sl[i];
+            if (sl->state == CY_VS_RING && !sl->fading && !sl->down && !sl->lhold) {
+                cy_gov_fade(sl, CY_STEAL_FADE_S);
+                e->ev_hold = CY_TAILS_HOLD;   /* (a count down, not a render serial: no wrap to stall on) */
+            }
+        }
+        break;
+    case CY_EV_RESTART:                  /* (v1.1.1, cy_engine_restart: the boot logo's start and end, and a touch
+                                          * that ends it) everything heard fades out over CY_RESTART_FADE renders with
+                                          * the patch and the plate it had (cy_engine_render holds the patch), then
+                                          * cy_restart_now; the events after this one wait */
+        e->restart = 1;
+        e->rs_hand = (uint8_t)(ev->arg != 0);
+        e->rs_n = 0;
+        cy_q.rs_take++;
+        break;
     default:
         break;
     }
+}
+
+/* (v1.1.1) a restart's fade is done (the output is at 0): the engine as cy_engine_init leaves it, and the room silent
+ * (cy_fx_clear); pick: the patch in force taken now as a first one (nothing glides in from what played before), or (a
+ * hand-over) the old one kept, unpicked, until the main loop's next. Kept: the queue and its last-value cells (the
+ * main loop's), the UI's event ring, the published object, the budget and the caps, the NaN counters, and the clocks
+ * that run through silence too (the render serial, the vibrato's phase; the room's drift in fx.c): after the boot
+ * logo the engine is then exactly as the same time of silence would have left it. Render side only, so nothing races
+ * the main loop */
+static void cy_pickup_patch(void);
+static void cy_restart_now(int pick)
+{
+    cy_eng_t *e = &cy_e;
+    const cy_object_t *o = e->obj;
+    uint32_t oseq = e->obj_seq, nan = e->nan_resets, rnd = e->rnd, i;
+    uint16_t bud = e->budget;
+    uint8_t bc = e->bow_cap, tc = e->tail_cap;
+    float vph = e->vib_ph;
+    cy_patch_t p = e->p;
+    __builtin_memset(e, 0, __builtin_offsetof(cy_eng_t, ui));
+    for (i = 0; i < CY_NALL; i++)
+        cy_slot_clear(&e->sl[i]);
+    e->rng = 0x9E3779B9u;
+    e->bow_key = -1;
+    e->obj = o, e->obj_seq = oseq, e->nan_resets = nan, e->rnd = rnd, e->vib_ph = vph;
+    e->budget = bud, e->bow_cap = bc, e->tail_cap = tc;
+    e->pseq = cy_q.pseq - 1u;            /* (picked up again, as the first: inited is 0) */
+    if (pick)
+        cy_pickup_patch();
+    else
+        e->p = p;                        /* (the vibrato's clock runs on at its rate until the next patch) */
+    cy_fx_clear();
 }
 
 /* -------------------------------------------------------------- the budget --- */
@@ -980,13 +1071,15 @@ static void cy_pickup_patch(void)
     }
 }
 
-/* the patch's continuous values move toward their targets one step a sub-block (spec §2.4.7) */
-static void cy_smooth(void)
+/* the patch's continuous values move toward their targets one step a sub-block (spec §2.4.7). (v1.1: CY_HOT, in RAM
+ * and call-free, with fastmath's helpers as their verbatim always-inlined copies (cy_engine_int.h): the same
+ * results, the host hash unchanged. It runs four times a render, and from the XIP flash its code missed the cache) */
+CY_HOT static void cy_smooth(void)
 {
     cy_eng_t *e = &cy_e;
     const cy_patch_t *p = &e->p;
     const float k = CY_SMOOTH;
-    float gp = fm_exp2f((cy_q.bend + p->tune_cents * 0.01f) * (1.0f / 12.0f));
+    float gp = cy_i_exp2f((cy_q.bend + p->tune_cents * 0.01f) * (1.0f / 12.0f));
     e->decay += k * (p->decay_mul - e->decay);
     e->tension += k * (p->tension_st - e->tension);
     e->palm += k * (p->palm - e->palm);
@@ -996,7 +1089,7 @@ static void cy_smooth(void)
     e->noise += k * (p->noise - e->noise);
     e->damper += k * (p->damper - e->damper);
     e->bloom += k * (p->bloom - e->bloom);
-    if (fm_fabsf(e->bloom) < 1e-5f)
+    if (cy_i_fabsf(e->bloom) < 1e-5f)
         e->bloom = 0.0f;
     e->stretch += k * (p->stretch - e->stretch);
     if (e->stretch < 1e-5f)
@@ -1004,13 +1097,51 @@ static void cy_smooth(void)
     e->vib += k * (p->vibrato_cents - e->vib);
     if (e->vib < 1e-4f)
         e->vib = 0.0f;
-    e->lev += k * (fm_db2lin(p->level_db) - e->lev);
+    e->lev += k * (cy_i_exp2f(p->level_db * 0.166096405f) - e->lev);   /* (fm_db2lin, written out) */
     e->onorm += 0.15f * (e->obj->out_norm - e->onorm);
-    if (fm_fabsf(e->onorm - e->obj->out_norm) < 1e-7f * e->obj->out_norm)
+    if (cy_i_fabsf(e->onorm - e->obj->out_norm) < 1e-7f * e->obj->out_norm)
         e->onorm = e->obj->out_norm;
     e->gpitch += 0.15f * (gp - e->gpitch);   /* bend / tune: ~5 ms */
-    if (fm_fabsf(e->gpitch - gp) < 1e-7f)
+    if (cy_i_fabsf(e->gpitch - gp) < 1e-7f)
         e->gpitch = gp;
+}
+
+/* (v1.1) a bowed slot's band-limiter, (1 + z^-1)^4 / 16 over its whole output (see the render), from the scratch
+ * t[] into the bus, zeroing t[] as it reads it so the next bowed slot finds it clear. CY_HOT (RAM, call-free): before
+ * v1.1 this loop and a separate clear of the scratch ran in the render, from the flash, and with four bows they were
+ * ~60 % of the render's own instructions there (fm1-emu profile, 21 AETHER). The same operations in the same order
+ * (bit-exact), four samples a turn so the history never shuffles through registers */
+CY_HOT static void cy_blim_block(float *h, float *tl, float *tr, float *oL, float *oR, uint32_t m)
+{
+    uint32_t c2, k;
+    for (c2 = 0; c2 < 2u; c2++) {
+        float *hh = h + 4u * c2, *t = c2 ? tr : tl, *out = c2 ? oR : oL;
+        float h0 = hh[0], h1 = hh[1], h2 = hh[2], h3 = hh[3];
+        for (k = 0; k + 4u <= m; k += 4u) {
+            float v0 = t[k], v1 = t[k + 1u], v2 = t[k + 2u], v3 = t[k + 3u];
+            t[k] = t[k + 1u] = t[k + 2u] = t[k + 3u] = 0.0f;
+            out[k] += 0.0625f * (v0 + h3) + 0.25f * (h0 + h2) + 0.375f * h1;
+            out[k + 1u] += 0.0625f * (v1 + h2) + 0.25f * (v0 + h1) + 0.375f * h0;
+            out[k + 2u] += 0.0625f * (v2 + h1) + 0.25f * (v1 + h0) + 0.375f * v0;
+            out[k + 3u] += 0.0625f * (v3 + h0) + 0.25f * (v2 + v0) + 0.375f * v1;
+            h3 = v0, h2 = v1, h1 = v2, h0 = v3;
+        }
+        for (; k < m; k++) {
+            float v = t[k];
+            t[k] = 0.0f;
+            out[k] += 0.0625f * (v + h3) + 0.25f * (h0 + h2) + 0.375f * h1;
+            h3 = h2, h2 = h1, h1 = h0, h0 = v;
+        }
+        hh[0] = h0, hh[1] = h1, hh[2] = h2, hh[3] = h3;
+    }
+}
+
+/* (v1.1) the telemetry's mode energies: one live slot's, weighted (CY_HOT: the same sums, in RAM) */
+CY_HOT static void cy_energy_add(float *dst, const float *src, float a)
+{
+    uint32_t k;
+    for (k = 0; k < CY_N; k++)
+        dst[k] += src[k] * a;
 }
 
 /* SURFACE keys at control rate: smoothed pressure, P_eff, the bow point, the point damper (spec §3.7, 3.4) */
@@ -1131,8 +1262,7 @@ static void cy_publish(uint32_t n)
         if (!cy_live(sl))
             continue;
         a *= a;
-        for (k = 0; k < CY_N; k++)
-            cy_tel.mode_energy[k] += sl->e[k] * a;
+        CY_FAR(cy_energy_add)(cy_tel.mode_energy, sl->e, a);
         used += cy_popcount(sl->act);
         if (sl->bowing)
             bf = fm_maxf(bf, sl->bFb * (1.0f / 0.9f));
@@ -1187,10 +1317,17 @@ void cy_engine_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     e->rnd++;
     e->est = 0.0f;
     o = e->obj = cy_geom_object();
-    cy_pickup_patch();
+    if (!e->restart && cy_q.rs_push == cy_q.rs_take)   /* (v1.1.1: a restart, queued or fading, keeps the patch in
+                                                        * force when it was queued; it takes the next as a first
+                                                        * one, below) */
+        cy_pickup_patch();
     {
         int32_t b = cy_q.budget;
         e->budget = (uint16_t)(b < CY_BUDGET_MIN ? CY_BUDGET_MIN : b > CY_BUDGET_MAX ? CY_BUDGET_MAX : b);
+        b = cy_q.bow_cap;                /* (v1.1: the device governor's bow cap, CY_MAX_BOWED elsewhere) */
+        e->bow_cap = (uint8_t)(b < 1 ? 1 : b > CY_MAX_BOWED ? CY_MAX_BOWED : b);
+        b = cy_q.tail_cap;
+        e->tail_cap = (uint8_t)(b < 0 ? 0 : b > (int)CY_NVOICES ? (int)CY_NVOICES : b);
     }
     if (o->seq != e->obj_seq) {          /* the object moved: every live slot glides to it (spec §3.3) */
         e->obj_seq = o->seq;
@@ -1198,7 +1335,31 @@ void cy_engine_render(int32_t *lr, uint32_t n, uint32_t master_q12)
             if (cy_live(&e->sl[i]))
                 e->sl[i].glide = 1, e->sl[i].dirty = 1;
     }
-    for (r = cy_q.ev_r; r != cy_q.ev_w; r++) {   /* the main loop's events, in order, at this sub-block edge */
+    if (e->ev_hold)                      /* (v1.1: events held behind a tails fade, CY_EV_TAILS, this many renders
+                                          * more; never on the host or the web, where nothing sends it) */
+        e->ev_hold--;
+    if (e->restart == 1u && e->rs_n >= CY_RESTART_FADE * CY_BLOCK) {   /* (v1.1.1) a restart's fade done: from cold */
+        int hand = e->rs_hand;
+        cy_restart_now(!hand);
+        if (hand) {                      /* a hand-over: silent until the main loop's next patch (its geometry first) */
+            e->restart = 2;
+            e->rs_pseq = cy_q.pseq;
+            CY_BARRIER();
+            cy_q.rs_ready = 1;
+        }
+    }
+    if (e->restart == 2u && cy_q.pseq != e->rs_pseq) {   /* ... and here it is: taken as a first, the room snapped to it
+                                                          * too, and the events waiting behind the restart go now */
+        cy_q.rs_ready = 0;
+        e->restart = 0;
+        e->pseq = cy_q.pseq - 1u;
+        cy_pickup_patch();
+        cy_fx_snap();                    /* (the room is silent since cy_restart_now's clear: its targets at once) */
+        e->obj_seq = o->seq;
+    }
+    for (r = cy_q.ev_r; r != cy_q.ev_w && !e->ev_hold && !e->restart; r++) {   /* the main loop's events, in order,
+                                                                             * at this sub-block edge (v1.1.1: none
+                                                                             * behind a restart) */
         CY_BARRIER();
         cy_apply(&cy_q.ev[r & (CY_EVQ - 1u)]);
     }
@@ -1218,6 +1379,47 @@ void cy_engine_render(int32_t *lr, uint32_t n, uint32_t master_q12)
         }
         sl->bhold = (sl->down || sl->lhold) && sl->state != CY_VS_FROZEN && sl->xt == CY_EXC_BOW;
     }
+    {   /* the bow cap lowered under held bowed notes (cy_engine_set_bow_cap, v1.1; the device's governor only): the
+         * oldest fade out in place over CY_GOV_FADE_S, their bows lifted at once (as a PANIC fades, but slower). A bow
+         * costs its junction whatever the mode budget (~13 % of a block in fm1-emu, ~18-21 % on the chip): at the
+         * budget's floor four bows were the v1.0 governor's floor, and on the FM-1 they did not fit (21 AETHER chords
+         * crackled). New notes past the cap take over the oldest in cy_alloc. With the caps at CY_MAX_BOWED and
+         * CY_NVOICES (the host, the browser) cy_alloc keeps the counts at or under them, so nothing here ever runs */
+        uint32_t cap = e->bow_cap;
+        for (;;) {
+            int ob = -1;
+            uint32_t nb = 0;
+            for (i = 0; i < CY_NVOICES; i++) {
+                const cy_slot_t *sl = &e->sl[i];
+                if (sl->bowing && !sl->fading && (sl->down || sl->lhold) && sl->state != CY_VS_FROZEN) {
+                    nb++;
+                    if (ob < 0 || sl->age < e->sl[ob].age)
+                        ob = (int)i;
+                }
+            }
+            if (nb <= cap || ob < 0)
+                break;
+            cy_gov_fade(&e->sl[ob], CY_GOV_FADE_S);
+        }
+        /* and the released notes still ringing past the tail cap fade the same way, the quietest first (a long
+         * AETHER tail costs a third of a bow, and every live slot glides with the plate's morph) */
+        cap = e->tail_cap;
+        for (;;) {
+            int q = -1;
+            uint32_t nt = 0;
+            for (i = 0; i < CY_NVOICES; i++) {
+                const cy_slot_t *sl = &e->sl[i];
+                if (sl->state == CY_VS_RING && !sl->fading && !sl->down && !sl->lhold) {
+                    nt++;
+                    if (q < 0 || sl->lvl < e->sl[q].lvl)
+                        q = (int)i;
+                }
+            }
+            if (nt <= cap || q < 0)
+                break;
+            cy_gov_fade(&e->sl[q], CY_GOV_FADE_S);
+        }
+    }
     cy_budget();
     {   /* the bow's coupled-mode share (bow.c, CY_BOW_SHARE): the budget's half over the slots bowing now */
         uint32_t nb = 0, cap;
@@ -1232,7 +1434,7 @@ void cy_engine_render(int32_t *lr, uint32_t n, uint32_t master_q12)
     for (off = 0; off < n; off += CY_CR) {
         uint32_t m = n - off < CY_CR ? n - off : CY_CR, any_rain = 0;
         float *L = e->bus_l + off, *R = e->bus_r + off;
-        cy_smooth();
+        CY_FAR(cy_smooth)();
         e->vib_ph += e->p.vib_rate_hz * (float)m * (1.0f / CY_FS);
         if (e->vib_ph >= 1.0f)
             e->vib_ph -= 1.0f;
@@ -1267,11 +1469,10 @@ void cy_engine_render(int32_t *lr, uint32_t n, uint32_t master_q12)
                 sl->exc = cy_contact_fill(sl, e->x, m);
             sl->run = sl->act & ~sl->cpl;
             CY_FAR(cy_slot_gains)(sl, m);
-            if (sl->blim) {              /* a bowed slot renders apart, then through its band-limiter (below) */
-                for (k = 0; k < m; k++)
-                    e->tl[k] = e->tr[k] = 0.0f;
+            if (sl->blim)                /* a bowed slot renders apart, then through its band-limiter (below), into
+                                          * the scratch, which is always clear here: zeroed at init and by
+                                          * cy_blim_block as it reads it (v1.1: the render's own clear went) */
                 L = e->tl, R = e->tr;
-            }
 #if CY_BOW_MODEL
             if (sl->bowing) {
                 uint32_t ev0 = sl->bevals;
@@ -1302,17 +1503,7 @@ void cy_engine_render(int32_t *lr, uint32_t n, uint32_t master_q12)
                                           * that 65 dB down at 0.45 fs (-2.4 dB at 10 kHz) and never switches path
                                           * mid-note (the slot keeps it until it is free) */
                 float *oL = e->bus_l + off, *oR = e->bus_r + off;
-                uint32_t c2;
-                for (c2 = 0; c2 < 2u; c2++) {
-                    float *h = sl->bl_h[c2], *t = c2 ? e->tr : e->tl, *out = c2 ? oR : oL;
-                    float h0 = h[0], h1 = h[1], h2 = h[2], h3 = h[3];
-                    for (k = 0; k < m; k++) {
-                        float v = t[k];
-                        out[k] += 0.0625f * (v + h3) + 0.25f * (h0 + h2) + 0.375f * h1;
-                        h3 = h2, h2 = h1, h1 = h0, h0 = v;
-                    }
-                    h[0] = h0, h[1] = h1, h[2] = h2, h[3] = h3;
-                }
+                CY_FAR(cy_blim_block)(&sl->bl_h[0][0], e->tl, e->tr, oL, oR, m);   /* (v1.1: in RAM) */
                 L = oL, R = oR;
                 e->est += 25.0f * (float)m;
             }
@@ -1349,5 +1540,16 @@ void cy_engine_render(int32_t *lr, uint32_t n, uint32_t master_q12)
             e->est += 34.0f * (float)m;
     }
     cy_fx_process(e->bus_l, e->bus_r, n, master_q12, lr);
+    if (e->restart == 1u) {              /* (v1.1.1) a restart's fade: a raised cosine to 0 over CY_RESTART_FADE
+                                          * renders, on all that is heard (the room's tail too), so nothing clicks */
+        const float k = 3.14159265f / (float)(CY_RESTART_FADE * CY_BLOCK);
+        for (i = 0; i < n; i++) {
+            uint32_t j = e->rs_n + i + 1u;
+            float g = j >= CY_RESTART_FADE * CY_BLOCK ? 0.0f : 0.5f + 0.5f * fm_cosf(k * (float)j);
+            lr[2u * i] = (int32_t)((float)lr[2u * i] * g);
+            lr[2u * i + 1u] = (int32_t)((float)lr[2u * i + 1u] * g);
+        }
+        e->rs_n += n;
+    }
     cy_publish(n);
 }

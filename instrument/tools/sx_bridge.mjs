@@ -11,8 +11,9 @@
 //
 // How it behaves:
 //  - it instantiates app.wasm with the worklet's WASI stub (as tools/wasm_smoke.mjs does: the clock is the device's,
-//    from the frames rendered), gives back the saved objects (--store), boots, plays through the splash at full
-//    speed, prints #ready, and from then on renders in real time: 441 frames every 10 ms, as the AudioWorklet would.
+//    from the frames rendered), gives back the saved objects (--store), boots, plays its first 2 s at full speed
+//    (most of the splash, which is the screen's alone), prints #ready, and from then on renders in real time: 441
+//    frames every 10 ms, as the AudioWorklet would.
 //    The device's own clock (web_now) is the rendered audio, so its 30 s question and 60 s staging timeouts run as
 //    on the FM-1, and !advance MS fast-forwards them;
 //  - every frame goes to web_cy_sx (app_sysex, the firmware's real handler) first, as on the FM-1, where the platform's
@@ -269,7 +270,7 @@ loadStore();
 if (typeof ex.web_store_writes === "function") storeWrites = ex.web_store_writes() >>> 0;
 if (typeof ex.web_master === "function") ex.web_master(3072);
 ex.web_boot();
-render(Math.round(BOOT_MS * FS / 1000));          // through the splash at full speed
+render(Math.round(BOOT_MS * FS / 1000));          // the boot, at full speed
 out("#ready");
 ready = true;
 service();                                         // (the first #state)

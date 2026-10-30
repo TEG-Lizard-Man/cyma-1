@@ -184,6 +184,7 @@ LOCAL	local control
 BANK LOCKED	bank locked
 NEWER FORMAT	from a newer firmware
 SETTINGS RESET	settings reset
+BOOT SOUND	boot sound
 ON (PEDAL)	on, by the pedal
 ON (ARP)	on, by arp
 OFF (PEDAL)	off, the pedal still holds

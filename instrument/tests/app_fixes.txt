@@ -370,25 +370,238 @@ preset 21
 param VOICES 8
 key 7 down 100
 key 11 down 100
+key 14 down 100
 wait 600
+expect bowed 3
+# (v1.1) a bowed chord loses a bow with the modes, at once (a bow costs its junction whatever the budget): the cap is
+# cut from where it bites, and the oldest bowed note fades (50 ms)
 peak 850
 wait 40
 expect budget 48
+expect gov_bows 2
+wait 150
+expect bowed 2
 expect gov_voices 8
-wait 100
+# two bows left: voices next, down to 4, and a single bow last
 peak 850
 wait 40
 expect gov_voices 6
 expect max_voices 6
+expect gov_bows 2
 wait 100
 peak 850
 wait 40
 expect gov_voices 4
+wait 100
+peak 850
+wait 40
+expect gov_bows 1
+wait 100
+expect bowed 1
 key 7 up
 key 11 up
+key 14 up
 peak 100
 wait 12000
 expect gov_voices >5
+# the bow cap is kept while nothing bows (it costs nothing; the next chord starts where it fits)
+expect gov_bows 1
+# a bow comes back only while the cap binds, a minute after the last bow was cut, and only if the heaviest block
+# plus one more bow's share fits
+wait 50000
+key 7 down 100
+wait 100
+key 11 down 100
+wait 300
+expect bowed 1
+peak 300
+wait 2600
+expect gov_bows 2
+key 14 down 100
+wait 300
+expect bowed 2
+# that bow overloads (modes, given back meanwhile, go first; then voices): it is cut again, and that count is not
+# given back for a minute (no sawtooth)
+peak 850
+wait 40
+expect budget 48
+wait 100
+peak 850
+wait 40
+expect gov_voices 6
+wait 100
+peak 850
+wait 40
+expect gov_voices 4
+wait 100
+peak 850
+wait 40
+expect gov_bows 1
+peak 100
+wait 12000
+expect gov_bows 1
+key 7 up
+key 11 up
+key 14 up
+wait 200
+# (the cap of 1: the newer notes took the older ones' bows) released notes still ringing go next, from where it
+# bites: the quietest fade, two at a time
+expect voices 1
+peak 850
+wait 40
+expect gov_tails 0
+wait 100
+expect voices 0
+# (v1.1) a preset load gives the tail cap back: the next sound's released notes ring out (a gong after AETHER)
+preset 7
+wait 100
+expect gov_tails 8
+# (v1.1) under the lowered cap (1), a chord's notes past it do not start: the first note bows, the two after it
+# (20 ms apart, the same chord) are not taken over (no steal-fade, no fresh bow); a note 300 ms later takes the bow
+preset 21
+wait 400
+expect gov_bows 1
+key 7 down 100
+wait 20
+key 11 down 100
+wait 20
+key 14 down 100
+wait 200
+expect bowed 1
+expect bowed_key 7
+key 17 down 100
+wait 200
+expect bowed 1
+expect bowed_key 17
+key 7 up
+key 11 up
+key 14 up
+key 17 up
+press REC
+wait 600
+release REC
+# (v1.1) learned onsets: a shed within 300 ms of a bowed chord that began onto ringing tails teaches the governor that
+# this chip cannot take both; from then on a bowed chord's second note first fades the ringing tails (5 ms)
+preset 21
+wait 400
+key 7 down 100
+wait 300
+key 7 up
+wait 300
+expect voices 1
+expect gov_onset 0
+key 11 down 100
+wait 10
+key 14 down 100
+wait 50
+peak 850
+wait 40
+expect gov_onset 1
+key 11 up
+key 14 up
+press REC
+wait 600
+release REC
+preset 21
+wait 400
+key 7 down 100
+wait 300
+key 7 up
+wait 300
+expect voices 1
+key 11 down 100
+wait 10
+key 14 down 100
+wait 100
+expect voices 1
+expect bowed_key 11
+key 11 up
+key 14 up
+press REC
+wait 600
+release REC
+# (v1.1) a bowed line, one bow and released notes ringing, above the floor: a shed cuts the tails with the modes, at
+# once (a bowed slot uses fewer modes than the floor, so the modes a shed takes are the tails'; fm1-emu at 1.6x: a
+# legato AETHER line whose tails went a shed later peaked at 95 % of a block)
+preset 21
+budget 96
+wait 400
+key 7 down 100
+wait 300
+key 7 up
+wait 200
+key 11 down 100
+wait 300
+expect bowed 1
+expect voices 2
+expect gov_tails 8
+peak 850
+wait 40
+expect budget <96
+expect gov_tails 0
+expect gov_bows 1
+wait 150
+expect voices 1
+key 11 up
+press REC
+wait 600
+release REC
+# (v1.1 review) the tail cap comes back on its own, two a step, after 2 s with no shed and no block over 65 %: the
+# quiet playing after a busy passage rings again (behind the 8 s peak-hold and the voices it stayed dry 10-18 s in
+# fm1-emu at 1.4x). Meanwhile a released note fades (the cap is 0); a block over 65 % (no near miss) holds it back
+preset 21
+budget 96
+wait 400
+key 7 down 100
+wait 300
+key 7 up
+wait 200
+expect voices 1
+expect gov_tails 8
+peak 850
+wait 40
+expect gov_tails 0
+key 11 down 100
+wait 300
+key 11 up
+wait 300
+expect voices 0
+wait 900
+peak 700
+wait 1500
+expect gov_tails 0
+wait 1200
+expect gov_tails >1
+wait 2000
+expect gov_tails 8
+key 14 down 100
+wait 300
+key 14 up
+wait 300
+expect voices 1
+press REC
+wait 600
+release REC
+# (v1.1) a new exciter gives the tail cap back too, as a preset load does (ALGORITHM, BOW -> RAIN): a cap cut for a
+# bowed chord would otherwise choke every RAIN or MALLET note at its release
+preset 21
+wait 400
+key 7 down 100
+wait 300
+key 7 up
+wait 200
+expect voices 1
+expect gov_tails 8
+peak 850
+wait 40
+expect gov_tails 0
+turn ALGO 1
+wait 100
+expect exciter 2
+expect gov_tails 8
+press REC
+wait 600
+release REC
 governor 0
 preset 1
 #
@@ -425,3 +638,70 @@ press REC
 wait 600
 release REC
 expect nan 0
+#
+# ---- the credit (v1.1 branding): a reader's first whole-screen line after boot names the producers, as the splash
+# shows them, when it has room for it whole (a reader's line is at most 240 characters). A long screen goes without
+# it, its last states kept (FROZEN, LATCHED, DAMP, LOCAL OFF: the credit cut LATCHED to LATC and lost the rest), and
+# the credit comes with the next line that has room; the one after is the screen alone (U02: the preset this script
+# left, edited on SPACE's layer B so the screen is long)
+tap FX
+wait 200
+tap FX
+wait 200
+turn K1 1
+press SEL
+tap OCT-
+wait 60
+tap OCT-
+wait 60
+tap OCT-
+wait 60
+tap OCT-
+wait 60
+tap OCT-
+wait 60
+tap OCT-
+wait 60
+tap OCT-
+wait 60
+tap OCT-
+wait 60
+tap OCT-
+wait 60
+tap OCT-
+wait 60
+tap OCT-
+wait 60
+tap OCT-
+wait 60
+release SEL
+wait 100
+tap OCT-
+tap OCT-
+tap PLAY
+tap ARP
+midi B0 7A 00
+press REC
+wait 400
+expect frozen 1
+expect latched 1
+expect octave -2
+listen
+wait 100
+said CYMA-1. U02 CATHEDRAL GONG, EDITED. SPACE, LAYER B:
+where
+wait 100
+said OCTAVE -2. TRANSPOSE -12. FROZEN. LATCHED. DAMP. LOCAL OFF
+release REC
+# (PANIC, OCT- held as OCT+ goes down: FREEZE, LATCH, DAMP and LOCAL OFF off, the octave as it was)
+press OCT-
+tap OCT+
+release OCT-
+wait 100
+expect frozen 0
+where
+wait 100
+said CYMA-1, PRODUCED BY TEAM EG AND LIZARD MAN. U02 CATHEDRAL GONG, EDITED. SPACE, LAYER B:
+where
+wait 100
+said CYMA-1. U02 CATHEDRAL GONG

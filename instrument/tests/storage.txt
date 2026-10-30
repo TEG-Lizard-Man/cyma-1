@@ -68,17 +68,16 @@ tap EDIT
 expect octave 1
 expect view 1
 wait 35000
-# ---- reboot from the flash: the last preset (U01), the octave and the view come back
+# ---- reboot from the flash: the last preset (U01) and the octave come back; the view is SAND (v1.1.3: every boot
+# lands on the sand table, the splash's sand flowing into it)
 reboot
 wait 1700
 tour 0
 expect preset 25
 expect edited 0
 expect octave 1
-expect view 1
+expect view 0
 tap OCT-
-tap EDIT
-tap EDIT
 expect octave 0
 expect view 0
 # U01 after the reboot: the same sound as before it

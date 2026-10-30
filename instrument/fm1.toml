@@ -1,5 +1,10 @@
 name = "CYMA-1"
 id_prefix = "FM-1_94"          # not in the taken list (900, 91N, 920, 93N, 97N, 99N)
+release = "1.1.3"              # CYMA-1's own key (fm1-base ignores it): tools/run_all.sh --device passes it to
+                               # build.py --release, so the package identity is FM-1_94010103 (v1.1.2: FM-1_94010102,
+                               # v1.1.1: FM-1_94010101, v1.1: FM-1_94010100, v1.0: FM-1_9400). Built on the Team EG
+                               # fork of fm1-base (platform/fm1-base-teg from tools/get_platform.sh, run_all.sh's
+                               # default; FM1_BASE overrides it)
 usb_manufacturer = "CYMA"
 usb_product = "CYMA-1 FM-1"
 o2 = ["src/*.c"]

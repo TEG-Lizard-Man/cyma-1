@@ -17,6 +17,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CYMA-1 · a playable Chladni plate</title>
 <meta name="description" content="CYMA-1: every key strikes, bows or rains on a virtual metal plate, and the sand on the screen settles into the figure you hear. Firmware for the M-VAVE FM-1, running in your browser.">
+<meta name="author" content="Team EG &amp; Lizard_Man">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23101421'/%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%2339557B' stroke-width='1.5'/%3E%3Cpath d='M16 5v22M5 16h22M8.2 8.2l15.6 15.6M23.8 8.2 8.2 23.8' stroke='%23FFF3DE' stroke-width='1.6' stroke-dasharray='1.2 1.6'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -261,6 +262,8 @@ h1 { font: 700 2.2rem/1 "Barlow Semi Condensed", "Barlow", sans-serif; letter-sp
 .ok { color: var(--teal); }
 footer { max-width: 1100px; margin: 3rem auto 0; padding: 1.2rem 0 2.6rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: .92rem; }
 footer p { margin: .25rem 0; }
+footer .credit { color: var(--ink); font-family: "Barlow Semi Condensed", "Barlow", sans-serif; font-size: 1.02rem;
+                 letter-spacing: .02em; margin-bottom: .5rem; }
 footer .row { display: flex; flex-wrap: wrap; gap: .4rem 1rem; align-items: center; margin-top: .8rem; }
 @media (prefers-reduced-motion: reduce) { .go, .hud, .say, .btn .dot, .scrbtn { transition: none; } .pill[data-state="starting"] i { animation: none; } }
 @media (max-width: 520px) { h1 { font-size: 2rem; } .tools { margin-left: 0; } .card li { grid-template-columns: 1fr; }
@@ -737,7 +740,7 @@ footer .row { display: flex; flex-wrap: wrap; gap: .4rem 1rem; align-items: cent
         <li><span><kbd>Space</kbd> hold</span><span>Lean in: every held key pressed harder</span></li>
         <li><span><kbd>Z</kbd> <kbd>X</kbd></span><span>Octave down, up</span></li>
         <li><span><kbd>C</kbd> <kbd>V</kbd></span><span>Velocity −20, +20</span></li>
-        <li><span><kbd>Shift</kbd></span><span>SEL (layer B and the combos)</span></li>
+        <li><span><kbd>Shift</kbd></span><span>SEL (hold: layer B, and the combos)</span></li>
         <li><span><kbd>←</kbd> <kbd>→</kbd></span><span>SELECT: the shape</span></li>
         <li><span><kbd>[</kbd> <kbd>]</kbd></span><span>ALGORITHM: the exciter</span></li>
         <li><span><kbd>↑</kbd> <kbd>↓</kbd></span><span>PRESETS</span></li>
@@ -764,8 +767,9 @@ footer .row { display: flex; flex-wrap: wrap; gap: .4rem 1rem; align-items: cent
         <li><span class="cond"><b>SELECT</b></span><span>Shape: drum, circle, hexagon, square, triangle, star, guitar, stadium, bar</span></li>
         <li><span class="cond"><b>ALGORITHM</b></span><span>Exciter: mallet, bow, rain</span></li>
         <li><span class="cond"><b>PRESETS</b></span><span>24 objects, then My Sounds (U01–U32)</span></li>
-        <li><span class="cond"><b>K1–K4</b></span><span>The page's four parameters; hold SEL for four more</span></li>
-        <li><span class="cond"><b>HOME ENV FX LFO GLO</b></span><span>Pages: plate, excite, space, motion, global</span></li>
+        <li><span class="cond"><b>K1–K4</b></span><span>The page's four parameters; hold SEL, or tap the page's button again, for four more</span></li>
+        <li><span class="cond"><b>HOME ENV FX LFO GLO</b></span><span>Pages: plate, excite, space, motion, global. Tap the page's button again for its layer B, which stays until you tap it again, tap SEL, or change page</span></li>
+        <li><span class="cond"><b>GLO, held</b></span><span>On the global page: the boot sound, Team EG's chime, off or on</span></li>
         <li><span class="cond"><b>SEQ</b></span><span>SURFACE: the keybed becomes the plate</span></li>
         <li><span class="cond"><b>PLAY</b></span><span>Freeze the plate ringing</span></li>
         <li><span class="cond"><b>EDIT</b></span><span>View: sand, field, mesh</span></li>
@@ -801,7 +805,8 @@ footer .row { display: flex; flex-wrap: wrap; gap: .4rem 1rem; align-items: cent
 </main>
 
 <footer>
-  <p>CYMA-1 is MPL-2.0, built on <a href="https://github.com/charlesvestal/fm1-base" target="_blank" rel="noopener">fm1-base</a> (MPL-2.0). Barlow and Terminus fonts: SIL OFL 1.1.</p>
+  <p class="credit">Produced by <strong>Team EG &amp; Lizard_Man</strong>.</p>
+  <p>CYMA-1 is MPL-2.0, built on <a href="https://github.com/charlesvestal/fm1-base" target="_blank" rel="noopener">fm1-base</a> (MPL-2.0) and its felucca-bsp board support. Barlow and Terminus fonts: SIL OFL 1.1.</p>
   <p>Device firmware built, not installed. The browser runs the host simulator compiled to WebAssembly: the same C as the FM-1 build.</p>
   <div class="row">
     <button class="ghost" id="tips" type="button">Show tips again</button>
@@ -2050,11 +2055,11 @@ function menu(btnId, menuId, onOpen) {
 // Always recording (the worklet's 60 s ring, at the device's rate and exact). One action saves both files, cut from
 // one time base: the WAV and the .mid start at the same instant, 50 ms before the first note in the window (or at
 // the first sound, when something was already ringing), so placed at the same bar in a DAW they line up. The
-// firmware's boot "ting" is not a start. The .mid holds what the keys played (the firmware's own MIDI out) and what
+// firmware's boot sound (v1.1.1: Team EG's chime, from 30 ms to 2.35 s) is not a start. The .mid holds what the keys played (the firmware's own MIDI out) and what
 // MIDI in and the phrase played (logged by the worklet as they reached the firmware, on the same clock).
 // Inside claude.ai the .zip goes through the viewer's downloads capability, which asks them to confirm; anywhere
 // else it is a download link.
-const PRE_S = 0.05, TING_S = 8;         // the lead-in before the first note; the boot ting is below -60 dBFS by 8 s
+const PRE_S = 0.05, BOOT_S = 8;         // the lead-in before the first note; the boot sound is over by 2.4 s (8 s: a margin)
 // (to the second: two takes in one minute are two files)
 function stamp() { const d = new Date(); return `CYMA-1 ${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}-${pad2(d.getMinutes())}-${pad2(d.getSeconds())}`; }
 function download(blob, name) {
@@ -2151,7 +2156,7 @@ function captureEvents(a, b) {
   return [...pick(S.midiLog), ...pick(S.inLog)].sort((x, y) => x[1] - y[1]);
 }
 // where both files start (context seconds): the first note-on less PRE_S, or earlier where sound other than the boot
-// ting was already ringing; never before the ring's first frame. null: nothing to capture
+// sound was already ringing; never before the ring's first frame. null: nothing to capture
 function captureStart(m) {
   const { l, r, sampleRate: sr } = m, n = l.length;
   if (!n) return null;
@@ -2159,7 +2164,7 @@ function captureStart(m) {
   const evs = captureEvents(tStart * 1000, (tStart + n / sr) * 1000);
   const firstOn = evs.find(([pkt]) => ((pkt >>> 8) & 0xf0) === 0x90 && (pkt >>> 24) & 0x7f);
   let start = firstOn ? firstOn[1] / 1000 - PRE_S : Infinity, why = firstOn ? "note" : "";
-  const quietUntil = typeof m.tBoot === "number" ? m.tBoot + TING_S : -Infinity;
+  const quietUntil = typeof m.tBoot === "number" ? m.tBoot + BOOT_S : -Infinity;
   const from = Math.max(0, Math.ceil((quietUntil - tStart) * sr));
   const lim = Math.min(n, Number.isFinite(start) ? Math.floor((start - tStart) * sr) : n);
   for (let i = from; i < lim; i++) if (Math.abs(l[i]) > 0.001 || Math.abs(r[i]) > 0.001) { start = tStart + i / sr - 0.01; why = "sound"; break; }

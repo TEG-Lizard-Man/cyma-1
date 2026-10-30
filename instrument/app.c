@@ -32,7 +32,10 @@
  * help; a note poll between the plate's strips (UI_POLL); REPLACE for an occupied slot; LFO-driven geometry published
  * at most 20 Hz; REVERT undoable; a browse keeps the edits it left; CC120 / 121 / 122, a separate pedal latch, channel
  * pressure only while MIDI notes are held; SAVE fades the output around its flash stall; the edit buffer survives a
- * power-off (settings v2); the tour in any order. Each is marked "fix-app" where it lives. */
+ * power-off (settings v2); the tour in any order. Each is marked "fix-app" where it lives.
+ *
+ * v1.1.1: Team EG's sonic logo, played live by the engine at every boot with the splash's credit, and GLOBAL's BOOT
+ * SOUND to turn it off (see "the boot logo", before app_frame). */
 #include "fastmath.h"
 #include "src/cy_config.h"
 #include "src/cy_plates.h"
@@ -74,6 +77,14 @@ static void app_poll_notes(void);
 #define APP_SWEEP_MS 1000u                     /* SEL+SEQ held this long: SWEEP instead of SPRINKLE */
 #define APP_BLINK_MS 600u                      /* SEQ's blink after a sprinkle or a sweep */
 #define APP_TALK_MS 350u                       /* a value is said once its knob has rested this long */
+#define APP_CREDIT_SAID ", PRODUCED BY TEAM EG AND LIZARD MAN. "   /* the boot's credit as a reader hears it, after
+                                                * APP_NAME in the first whole-screen line after boot that has room
+                                                * for it (the splash shows it) */
+#define APP_LOGO_END_MS 2350u                  /* (v1.1.1) the boot logo's end, ms from boot_t: its ring is 60 dB under
+                                                * its peak by 2.0 s and 71 dB under at 2.35 s, where the chosen master
+                                                * (v3c-ring-2p0.wav) ends; the engine changes hands here */
+#define APP_GLO_HOLD_MS 500u                   /* (v1.1.1) GLO held this long on the GLOBAL page: BOOT SOUND on / off */
+#define APP_SETF_QUIET 1u                      /* (v1.1.1) settings flags: BOOT SOUND off (0, the default: on) */
 #define APP_TOUR_LEAN_MS 6000u                 /* tour step 2 stops waiting for a lean */
 #define APP_TOUR_END_MS 1500u                  /* CY_TOUR_DONE shows this long, then the tour is off */
 #define APP_QUIET_MS 3000u                     /* autosave: every voice free this long ... */
@@ -86,6 +97,19 @@ static void app_poll_notes(void);
 #define APP_MUTE_MS 80u                        /* SAVE: the output fades (fx's 10 ms MASTER smoothing) before the write */
 #define APP_TOUR_SKIP_MS 8000u                 /* a tour chip with other controls in use this long: skipped */
 #define APP_CHORD_BUDGET 64                    /* the chord guard's budget: three onsets together fit under it */
+#define APP_CHORD_MS 25u                       /* (v1.1) three note-ons this close together are a chord (any three) */
+#define APP_GOV_NEAR_PM 800u                   /* a block over this (per mille of its time) is a near miss */
+#define APP_GOV_BOWS_BOOT 2                    /* the device's bow cap at power-on (four AETHER bows never fit) */
+#define APP_GOV_BOW_SETTLE_MS 150u             /* after a bow is cut, the next waits this long (its fade: 50 ms) */
+#define APP_GOV_BOWS_MIN 1                     /* the bow cap's floor */
+#define APP_GOV_BOW_GIVE_PM 750u               /* a bow back only if the heaviest block + a bow's share stays under */
+#define APP_GOV_BOW_MEMORY_MS 60000u           /* a bow count that overloaded: not given back for this long */
+#define APP_GOV_ONSET_MS 300u                  /* (v1.1) a shed this soon after a bowed chord began onto ringing tails:
+                                                * the chip cannot take both (app_chord_guard then clears the tails) */
+#define APP_GOV_BOW_PM 210u                    /* (v1.1) a held bow's load until measured: fm1-emu at 1.6x, 21 AETHER */
+#define APP_GOV_TAILS_MS 2000u                 /* (v1.1 review) the tail cap comes back after this long without a shed */
+#define APP_GOV_TAILS_PK 650u                  /* ... and none over this (per mille of a block's time) */
+#define APP_TAP_MS 400u                        /* (v1.1) a button let go within this, alone, is a tap (layer B's latch) */
 #define APP_SAVE_USB 0xFFu                     /* save_pend_slot: SAVE's write of a USB commit (app_sounds.c) */
 
 /* the settings record (OBJ_SETTINGS, §5.7): the globals, where the player was, the tour and the hints seen; v2 adds
@@ -98,7 +122,8 @@ typedef struct {
     uint8_t view, tour_done, tour_boots;       /* (tour_boots was v1's reserved byte, always 0 there) */
     uint8_t hint_count[P_NPARAMS];             /* touches seen per parameter: the hint line shows the first three */
     uint16_t edit_preset;                      /* v2: whose edits; 0xFFFF none */
-    uint8_t edit_live, rsv2;
+    uint8_t edit_live;
+    uint8_t flags;                             /* (v1.1.1, v1.1's reserved byte: 0 in every older record) APP_SETF_* */
     uint16_t edit[P_NPRESET];                  /* v2: the targets, norm x 65535 */
 } app_settings_t;
 static app_settings_t app_set;
@@ -137,7 +162,13 @@ static volatile uint8_t app_mute;              /* the render's MASTER at 0 (fx f
 
 static struct {
     /* where the player is */
-    uint8_t page, prev_page, layer, view, keymode;
+    uint8_t page, layer, view, keymode;
+    uint8_t layer_lock;                        /* (v1.1) layer B by a tap of the page's own button: until the next
+                                                * tap of it or of SEL, or another page (SEL held is B too, as ever) */
+    int8_t pg_tap;                             /* (v1.1) the page's own button, pressed alone: its index + 1 (a tap
+                                                * toggles layer B at its release), 0 none */
+    uint8_t sel_used;                          /* (v1.1) SEL, since it went down, joined another control (a combo) */
+    uint32_t pg_tap_t, sel_t;                  /* (when each went down) */
     int8_t octave, transpose;
     uint8_t frozen, latched, damping, compare, edited;
     uint8_t latch_btn, latch_pedal;            /* ARP's LATCH and the sustain pedal's: the engine has either */
@@ -219,18 +250,28 @@ static struct {
     /* the mode budget and its governor */
     uint16_t budget;
     uint8_t gov_voices;                        /* the polyphony the governor allows (8 = VOICES alone) */
+    uint8_t gov_bows;                          /* (v1.1) held bowed notes the governor allows (CY_MAX_BOWED = all) */
+    uint8_t gov_tails;                         /* (v1.1) released notes it leaves ringing (CY_NVOICES = all) */
+    uint32_t gov_bow_t;                        /* (v1.1) the last bow cut (0: none yet) */
+    uint8_t gov_bows_ceil;                     /* (v1.1) ... and the cap it left: no give-back past it for a minute */
+    uint32_t gov_idle_pm;                      /* (v1.1) a block's load while nothing sounds (per mille), smoothed */
     uint32_t gov_t, gov_low_t, ovl_seen, ovl_t;
     uint32_t pk_hold, pk_hold_t;               /* the heaviest block lately (per mille), held 8 s */
-    uint32_t chord_t;                          /* the chord guard: note-ons in the last 10 ms */
-    uint8_t chord_n;
+    uint32_t pk_tails_t;                       /* (v1.1 review) the last block over APP_GOV_TAILS_PK (the tail cap's) */
+    uint32_t chord_t[2];                       /* the chord guard: the two note-ons before this one (v1.1) */
+    uint8_t chord_n;                           /* (how many of them there are yet, 0..2) */
+    uint32_t bow_on_t;                         /* (v1.1) a bowed chord's first note-on (APP_CHORD_MS window) ... */
+    uint8_t bow_on_n, bow_on_tails;            /* ... its note-ons so far, and whether tails rang when it began */
+    uint8_t gov_onset;                         /* (v1.1) learned: a bowed chord onto tails overloads this chip */
+    uint32_t gov_bow_pm, gov_last_pk;          /* (v1.1) a held bow's measured load (per mille); the frame's peak */
     /* settings autosave */
     uint8_t set_dirty;                         /* bit 0 anything, bit 1 more than the preset number */
     uint8_t set_fails;
     uint32_t set_saved_t, quiet_t, set_saves;
     uint32_t bank_crc;                         /* CYMA-1 Sounds: GET_DIR's CRC of app_bank, while bank_crc_ok */
-#ifdef PLAT_WEB
-    uint8_t ting;                              /* the boot's soft C4 (§6.7): 1 struck, 2 released */
-#endif
+    uint8_t logo, logo_i;                      /* (v1.1.1) the boot logo: APP_LOGO_*; its next event */
+    uint32_t logo_end_t;                       /* ... when it ended (0: it has not played since boot) */
+    uint8_t credited;                          /* a reader has heard the credit since boot (app_speak) */
 } app;
 static uint8_t led_lv[42];                     /* §5.5: keys 0..26, buttons 27..40 (B_*), [41] PLAY green; 0..3 */
 static uint8_t led_surf[NKEYS];                /* the SURFACE map, with its hysteresis */
@@ -239,6 +280,10 @@ static float led_vpk[CY_NVOICES];              /* each voice's peak since its no
 static uint8_t led_vnote[CY_NVOICES];
 
 static const uint8_t ctl_page_btn[PG_N] = {B_HOME, B_ENV, B_FX, B_LFO, B_GLO};
+enum { APP_LOGO_OFF, APP_LOGO_ARMED, APP_LOGO_ON, APP_LOGO_END };   /* (v1.1.1) the boot logo: none; due at the
+                                                * boot's first pass; playing; fading out, the player's patch due */
+static void app_logo_yield(void);              /* (v1.1.1) anything that plays or changes the sound ends the logo */
+static void app_logo_tick(uint32_t now, int poll);   /* (v1.1.1) its notes, its start and its end */
 static const char *const app_view_name[CY_NVIEW] = {"SAND", "FIELD", "MESH"};
 
 /* ------------------------------------------------------------------ text --- */
@@ -368,6 +413,7 @@ static void app_global_changed(int id)
  * switches at once), and the next detent counts from there, not from wherever the ramp happened to be */
 static void app_set_param(int id, float n)
 {
+    app_logo_yield();                          /* (v1.1.1) a change of sound ends the boot logo first */
     n = fm_clampf(n, 0.0f, 1.0f);
     if (id < 0 || id >= P_NPARAMS)
         return;
@@ -453,10 +499,15 @@ static void ctl_release_all(void)
  * engine hears the new patch now, not at the next frame, so a key struck a moment after SEQ or ALGORITHM is played in
  * the mode the screen already shows (fix-app) */
 static void app_patch_now(void);
+static void app_gov_tails_set(int n);          /* (v1.1, the governor's) */
 static uint8_t app_exc_seen;
 static void ctl_keymode_watch(void)
 {
     int km = app_keymode(), ex = app_exciter();
+    if (ex != app_exc_seen)                    /* (v1.1) a new exciter's released notes ring out again: a tail cap the
+                                                * governor set for a bowed chord would choke MALLET's tails (the next
+                                                * overload cuts again), as a preset load does */
+        app_gov_tails_set(CY_NVOICES);
     if (km != app.keymode) {
         ctl_release_all();
         app.keymode = (uint8_t)km;
@@ -534,6 +585,7 @@ static int app_preset_load(int idx, int glide)
     int i;
     if (!app_preset_values(idx, v, nm))
         return 0;
+    app_logo_yield();                          /* (v1.1.1) a new sound ends the boot logo first */
     for (i = 0; i < P_NPRESET; i++) {
         app_stored[i] = app_target[i] = v[i];
         if (glide && !app_is_enum(i)) {
@@ -548,6 +600,9 @@ static int app_preset_load(int idx, int glide)
     app.preset = (uint16_t)idx;
     app.auditioned = 0;                        /* (the preset's own sound and name now) */
     app.undo_ok = 0;                           /* (REVERT's undo belongs to the sound it reverted) */
+    app_gov_tails_set(CY_NVOICES);             /* (v1.1) a new sound's released notes ring out again: a tail cap the
+                                                * governor set for the last one (an AETHER chord's) starts over, so a
+                                                * gong after it is not choked (the next overload cuts again) */
     if (app_set.preset != app.preset) {
         app_set.preset = app.preset;
         app_dirty_preset();
@@ -568,6 +623,7 @@ static void app_targets_take(float *d)
 static void app_targets_give(const float *s, int glide)
 {
     int i;
+    app_logo_yield();                          /* (v1.1.1) as a load does */
     for (i = 0; i < P_NPRESET; i++) {
         app_target[i] = app_ongrid(i, fm_clampf(s[i], 0.0f, 1.0f));
         if (glide && !app_is_enum(i))
@@ -729,6 +785,22 @@ static void app_speak(uint32_t now)
         if (app.local_off)
             app_cat(t, ". LOCAL OFF", sizeof t);
         app_speech_text(t, sizeof t, t, 0);
+        if (!app.credited) {                   /* the credit, once a boot, after APP_NAME: in the first line with room
+                                                * for it whole, so it never cuts off the screen's last states (a long
+                                                * line, LOCAL OFF at its end, waits for a later "where") */
+            static const char cr[] = APP_NAME APP_CREDIT_SAID;
+            const uint32_t p = sizeof APP_NAME + 1u, d = sizeof cr - 1u - p;   /* p: APP_NAME ". " */
+            uint32_t n = 0, i;
+            while (t[n])
+                n++;
+            if (n >= p && n + d <= ANN_MAX) {
+                for (i = n + 1u; i-- > p;)    /* the rest, its NUL too, d along */
+                    t[i + d] = t[i];
+                for (i = 0; i < p + d; i++)
+                    t[i] = cr[i];
+                app.credited = 1;
+            }
+        }
         ann_say(t, 0, ANN_NOW);
     }
     ann_tick(now);
@@ -812,12 +884,23 @@ static void ctl_tour_tick(uint32_t now)
         app.tour = CY_TOUR_OFF;
 }
 
+/* any key, button or detent during the boot splash cuts it short: the burst into the plate starts at the next frame
+ * (ui_frame), so a player who starts at once gets the screen 0.5 s later. Only a request: the input is acted on as
+ * ever (a key sounds, as the keys always have through the splash; a button or a detent does what it does), so it is
+ * neither lost nor doubled. MIDI and MASTER do not cut it (a DAW's notes, a pot's drift) */
+static void ctl_splash_cut(void)
+{
+    ui_spl_cut = 1;
+    app_logo_yield();                          /* (v1.1.1) and the boot logo stops: the input is the player's */
+}
+
 /* ------------------------------------------------------------------ keys --- */
 static void app_chord_guard(uint32_t now);
 static void ctl_key_down(uint32_t k)
 {
     uint32_t v = touch_vel(k);
     int32_t note = app_key_note(k);
+    ctl_splash_cut();
     v = v < 1u ? 1u : v > 127u ? 127u : v;
     app.vel[k] = (uint8_t)v;
     app.press[k] = 0;
@@ -1167,14 +1250,33 @@ static void ctl_morph_end(void)
     }
 }
 
-static void ctl_page(int pg)
+/* (v1.1) layer B latched, or let go: a tap of the page's own button (ctl_buttons), or of SEL alone while it is
+ * latched. The player asked to reach layer B (GLOBAL's THEME) without holding SEL; that press was GLO's "back where
+ * you were" in v1.0, and a no-op on the other pages */
+static void ctl_layer_latch(int on)
 {
-    if (pg == PG_GLOBAL && app.page == PG_GLOBAL) {   /* GLO again: back where you were */
-        pg = app.prev_page;
-    } else if (app.page != PG_GLOBAL) {
-        app.prev_page = app.page;
-    }
+    app.layer_lock = (uint8_t)(on != 0);
+    app.layer = app.layer_lock;
+    app_say(cy_page_name(app.page), on ? "LAYER B" : "LAYER A");   /* (the footer says it: the B notch is small, and
+                                                                    * it now stays) */
+}
+
+/* a control other than SEL or the pending page button acted: SEL held is a combo, not a tap (its release leaves a
+ * latched layer B alone), and the page button held is not a tap either (v1.1) */
+static void ctl_joined(void)
+{
+    app.sel_used = 1;
+    app.pg_tap = 0;
+}
+
+/* a page button: that page, layer A (or B while SEL is held). (The page's own button, alone, is ctl_buttons': a tap
+ * of it toggles layer B, v1.1) */
+static void ctl_page(int pg, int sel)
+{
+    if (pg != app.page)
+        app.layer_lock = 0;
     app.page = (uint8_t)pg;
+    app.layer = (uint8_t)(sel | app.layer_lock);
     app_tell(cy_page_name(pg), app.layer ? "LAYER B" : "");
     app.later_page = (int8_t)pg;
 }
@@ -1184,7 +1286,20 @@ static void ctl_buttons(void)
     uint32_t btn = plat_buttons(), down = btn & ~app.btn, up = app.btn & ~btn, now = plat_ms();
     int sel = (int)(btn >> B_SEL & 1u), k;
     char t[8];
-    if ((btn ^ app.btn) >> B_SEL & 1u) {       /* (a page just named: one sentence, "EXCITE LAYER B") */
+    if (down)
+        ctl_splash_cut();
+    /* (v1.1) the latch's taps: SEL down with another button already held is a combo, and so is any other button
+     * going down while SEL is held (ctl_encoders: any turn); any other button cancels a page button's pending tap */
+    if (down >> B_SEL & 1u) {
+        app.sel_used = (uint8_t)((btn & ~(1u << B_SEL)) != 0u);
+        app.sel_t = now;
+    }
+    if (down & ~(1u << B_SEL))
+        app.sel_used = 1;
+    if (app.pg_tap && (down & ~(1u << ctl_page_btn[app.pg_tap - 1])))
+        app.pg_tap = 0;
+    if (((btn ^ app.btn) >> B_SEL & 1u) && !app.layer_lock) {   /* (a page just named: one sentence, "EXCITE LAYER B";
+                                                                 * with layer B latched, SEL held changes nothing) */
         if (app.later_set && app.later_page >= 0 && now - app.later_t < APP_TALK_MS) {
             int pg = app.later_page;
             app_tell(cy_page_name(pg), sel ? "LAYER B" : "LAYER A");
@@ -1192,8 +1307,11 @@ static void ctl_buttons(void)
         } else {
             app_tell(sel ? "LAYER B" : "LAYER A", "");
         }
+    } else if ((up >> B_SEL & 1u) && app.layer_lock && !app.sel_used && now - app.sel_t < APP_TAP_MS) {
+        ctl_layer_latch(0);                    /* (v1.1 review) SEL tapped alone: the latch lets go. Its LED is the
+                                                * one lit while layer B is latched, so it is the way out too */
     }
-    app.layer = (uint8_t)sel;
+    app.layer = (uint8_t)(sel | app.layer_lock);
     if ((up >> B_SEL & 1u) && app.morphing)
         ctl_morph_end();
     if (app_sx_asking()) {                     /* a USB question (app_sounds.c): SAVE says yes; a page button, SEL+SAVE
@@ -1223,9 +1341,20 @@ static void ctl_buttons(void)
         } else if (sel && b == B_GLO) {        /* replay the tour */
             ctl_tour_start(now, CY_TOUR_KEY);
             app_say("TOUR", "PLAY A KEY");
+        } else if (!sel && k == (int)app.page) {   /* (v1.1) the page's own button: decided at its release (v1.1
+                                                    * review: at the press, a HOME landing just before SEL latched B) */
+            app.pg_tap = (int8_t)(k + 1);
+            app.pg_tap_t = now;
         } else {
-            ctl_page(k);
+            ctl_page(k, sel);
         }
+    }
+    /* (v1.1) the page's own button let go: a tap of it alone (under APP_TAP_MS, nothing else meanwhile, still that
+     * page, no question open) toggles layer B; held longer, it did nothing */
+    if (app.pg_tap && (up >> ctl_page_btn[app.pg_tap - 1] & 1u)) {
+        if (now - app.pg_tap_t < APP_TAP_MS && app.pg_tap - 1 == (int)app.page && !app.save_state && !app_sx_asking())
+            ctl_layer_latch(!app.layer_lock);
+        app.pg_tap = 0;
     }
     if ((up >> B_HOME & 1u) && app.compare)
         ctl_compare(0);
@@ -1455,7 +1584,11 @@ static void ctl_encoders(void)
     int32_t e;
     int k, sel = (int)(plat_buttons() >> B_SEL & 1u);
     char t[32];
-    if ((e = plat_enc(EN_SELECT)) != 0 && !app.compare) {   /* SHAPE, on every page */
+    if ((e = plat_enc(EN_SELECT)) != 0) {      /* (v1.1: any turn makes SEL held a combo, a page button held no tap) */
+        ctl_joined();
+        ctl_splash_cut();
+    }
+    if (e != 0 && !app.compare) {              /* SHAPE, on every page */
         e = ctl_accel(EN_SELECT, e, 2, 4);
         app_set_param(P_SHAPE, ctl_steps(P_SHAPE, app_target[P_SHAPE], e));
         ctl_focus(P_SHAPE, 1);
@@ -1463,7 +1596,11 @@ static void ctl_encoders(void)
         app_tell("SHAPE", t);
         ctl_tour_step(CY_TOUR_SELECT);
     }
-    if ((e = plat_enc(EN_ALGO)) != 0 && !app.compare) {     /* EXCITER: MALLET -> BOW -> RAIN, wrapping */
+    if ((e = plat_enc(EN_ALGO)) != 0) {
+        ctl_joined();
+        ctl_splash_cut();
+    }
+    if (e != 0 && !app.compare) {              /* EXCITER: MALLET -> BOW -> RAIN, wrapping */
         int x = ((app_exciter() + (int)(e % CY_NEXC)) % CY_NEXC + CY_NEXC) % CY_NEXC;
         app_set_param(P_EXCITER, app_enum_norm(P_EXCITER, x));
         ctl_keymode_watch();                   /* (the engine hears the new exciter before any next key) */
@@ -1471,7 +1608,11 @@ static void ctl_encoders(void)
         app_tell("EXCITER", cy_engine_exciter_name(x));
         ctl_tour_step(CY_TOUR_ALGO);
     }
-    if ((e = plat_enc(EN_PRESET)) != 0 && app_sx_asking()) {
+    if ((e = plat_enc(EN_PRESET)) != 0) {
+        ctl_joined();
+        ctl_splash_cut();
+    }
+    if (e != 0 && app_sx_asking()) {
         app_sx_answer(0);                      /* a USB question (app_sounds.c): a turn says no, and is swallowed */
     } else if (e != 0) {
         int s = e < 0 ? -1 : 1, n = (int)(e < 0 ? -e : e), i;
@@ -1511,6 +1652,8 @@ static void ctl_encoders(void)
         int id;
         if ((e = plat_enc(EN_K1 + k)) == 0)
             continue;
+        ctl_joined();
+        ctl_splash_cut();
         id = cy_page_param(app.page, app_exciter(), app.layer, k);
         if (id >= 0 && id < P_NPARAMS)
             ctl_knob(id, e, EN_K1 + k);
@@ -1527,6 +1670,9 @@ static void app_input(void)
     ctl_buttons();
     ctl_encoders();
     app_midi_in(0);
+    if (app.logo != APP_LOGO_OFF)              /* (v1.1.1) the boot logo: its start, its notes to the millisecond, its
+                                                * end, the hand-over (after the input: a touch that ends it is first) */
+        app_logo_tick(plat_ms(), 0);
 }
 void app_input_only(void) { app_input(); }
 
@@ -1537,6 +1683,9 @@ static void app_poll_notes(void)
 {
     ctl_keys();
     app_midi_in(1);
+    if (app.logo == APP_LOGO_ON)               /* (v1.1.1) the boot logo's notes on time (a touch ending it above only
+                                                * queues the engine's restart: the hand-over waits for app_input) */
+        app_logo_tick(plat_ms(), 1);
 }
 
 /* ------------------------------------------------------------------- MIDI --- */
@@ -1578,6 +1727,9 @@ static void app_midi_program(int pc)
 static void app_midi_one(uint32_t pkt)
 {
     uint32_t st = (pkt >> 8) & 0xF0u, d1 = (pkt >> 16) & 0x7Fu, d2 = (pkt >> 24) & 0x7Fu;
+    if (st >= 0x80u && st <= 0xE0u)            /* (v1.1.1) a channel message ends the boot logo (a DAW's notes, controls,
+                                                * a Program Change are the player's sound); it does not cut the splash */
+        app_logo_yield();
     if (st == 0x90u && d2) {
         int key = -1;
         if (app.keymode) {
@@ -1710,6 +1862,15 @@ static void ctl_tick(uint32_t now)
     }
     if (app.hint_param >= 0 && (int32_t)(now - app.hint_until) >= 0)
         app.hint_param = -1;
+    /* (v1.1.1) GLO held on the GLOBAL page: BOOT SOUND on / off (the page's own button pressed alone, as a tap is, held
+     * APP_GLO_HOLD_MS; its release is then no tap). Saved with the settings, said on the footer */
+    if (app.pg_tap == PG_GLOBAL + 1 && app.page == PG_GLOBAL && (app.btn >> B_GLO & 1u) &&
+        now - app.pg_tap_t >= APP_GLO_HOLD_MS && !app.save_state && !app_sx_asking()) {
+        app.pg_tap = 0;
+        app_set.flags ^= APP_SETF_QUIET;
+        app_dirty();
+        app_say("BOOT SOUND", app_set.flags & APP_SETF_QUIET ? "OFF" : "ON");
+    }
     ctl_tour_tick(now);
 }
 
@@ -1734,44 +1895,135 @@ static void app_lfo(float dt)
     app_mod.octave = app.octave;
 }
 
-/* the mode budget's governor (§3.8; the device's, or the host's under test). Slow: every 500 ms, over 80 % takes 8
- * modes; under 62 % for 2 s gives 8 back, up to DETAIL. Fast: an overloaded block (app_overload) takes 32 at once.
- * fix-app: it also acts before the xrun. app_render times every block, and a near miss (a block over 80 % of its
- * time) takes 16 at once, since the next chord's onset (contact and noise run every mode through the excited
- * kernel: ~+50 % of a block for four notes) is what overflows. A give-back waits until the heaviest block of the last
- * 8 s left room for an onset (under 60 %), so it does not climb straight back into the next xrun. A shed cuts from
- * where the budget bites (the modes in use + 8: a bowed patch uses fewer than CY_BUDGET_MIN, so it goes straight to the
- * floor). At CY_BUDGET_MIN, where modes no longer help, it sheds voices instead, VOICES down to 4 (new notes then
- * steal), and it gives voices back before modes */
+/* the mode budget's governor (§3.8; the device's, or the host's under test). Slow: every 500 ms, over 80 % sheds a
+ * step; under 62 % for 2 s gives one back. Fast: an overloaded block (app_overload) sheds at once, and so does a near
+ * miss (a block over APP_GOV_NEAR_PM of its time: app_render times every block), at most every 100 ms. A give-back
+ * waits until the heaviest block of the last 8 s left room for an onset (under 60 %).
+ * The steps (v1.1, measured on the chip's real speed, which fm1-emu runs 1.2-1.6x too fast for lack of a cache model):
+ * modes first, cut from where the budget bites (the modes in use + 8), down to CY_BUDGET_MIN; then, for a bowed
+ * patch, the tails of released notes (the quietest fade, two at a time), voices down to 4 (new notes then steal), and
+ * the bows (MALLET and RAIN: voices down to 4 alone, as v1.0). A bow costs its friction junction whatever the budget
+ * (~13 % of a block at emulator speed, ~18-21 % on the FM-1; its modes are a tenth of that), so v1.0, which had only
+ * modes and voices for it (and VOICES never reaches a bow: CY_MAX_BOWED is 4 anyway), sat at its floor while 21
+ * AETHER chords overran every LFO glide. With two or more bowing, or released notes ringing, the next step goes with
+ * the modes, at once: a bow (the oldest bowed note fades over 50 ms, engine.c) while three or more bow, else the
+ * tails; a single bow is the last step of all. One bow at a time (APP_GOV_BOW_SETTLE_MS: the last one's fade first).
+ * The device boots with APP_GOV_BOWS_BOOT bows. Give-backs: voices, tails, modes, then a bow, and a bow only while
+ * the cap binds (unused, it costs nothing to keep: the next chord starts where the last fitted), only if the heaviest
+ * block plus one more bow's share stays under APP_GOV_BOW_GIVE_PM, and never back to a count that overloaded in the
+ * last minute (no sawtooth). Under the lowered cap a chord's bowed notes past it do not start (engine.c cy_alloc),
+ * and a shed right after a bowed chord began onto ringing tails is learned (app_chord_guard then fades such tails at
+ * the next bowed chord's second note). A preset load or a new exciter gives the tail cap back, and so, two a step,
+ * do 2 s with no shed and no block over 65 % (the 8 s peak-hold is the other caps'; v1.1 review) */
 #ifdef PLAT_HOST
 static uint8_t app_gov_on, app_gov_cpu;        /* the host's "governor 1" and "cpu N": the device's logic, testable */
 static uint16_t app_gov_pk;                    /* the host's "peak N": a block's load per mille, as app_render's */
 #endif
 static int app_voices_set(void) { return (int)(app_v(P_VOICES) + 0.5f); }   /* VOICES: 4 / 6 / 8 */
+static int app_gov_bowing(void)                /* held bowed notes now (a faded or lifted one rings: CY_VS_RING) */
+{
+    int i, n = 0;
+    for (i = 0; i < CY_NVOICES; i++)
+        n += app_tel.voice_state[i] == CY_VS_BOWED;
+    return n;
+}
+static int app_gov_ringing(void)               /* released notes still ringing (and ones fading out) */
+{
+    int i, n = 0;
+    for (i = 0; i < CY_NVOICES; i++)
+        n += app_tel.voice_state[i] == CY_VS_RING;
+    return n;
+}
+static void app_gov_tails_set(int n)
+{
+    n = n < 0 ? 0 : n > CY_NVOICES ? CY_NVOICES : n;
+    if (n != app.gov_tails) {
+        app.gov_tails = (uint8_t)n;
+        cy_engine_set_tail_cap(n);
+    }
+}
+/* (v1.1) the polyphony the governor allows: VOICES' 8 / 6 / 4 or under (app_patch_build). noinline, as its
+ * neighbours' engine calls are, so fm1-emu's governor trace (build-test's slowed-clock runs) can break on it */
+static __attribute__((noinline)) void app_gov_voices_set(int n)
+{
+    app.gov_voices = (uint8_t)(n < 4 ? 4 : n > CY_NVOICES ? CY_NVOICES : n);
+}
+static void app_gov_bows_set(int n)
+{
+    n = n < APP_GOV_BOWS_MIN ? APP_GOV_BOWS_MIN : n > CY_MAX_BOWED ? CY_MAX_BOWED : n;
+    if (n != app.gov_bows) {
+        app.gov_bows = (uint8_t)n;
+        cy_engine_set_bow_cap(n);
+    }
+}
 static void app_gov_shed(int modes, uint32_t now)
 {
-    int used = (int)app_tel.modes_used, b = (int)app.budget;
+    int used = (int)app_tel.modes_used, b = (int)app.budget, nb = app_gov_bowing(), nr = app_gov_ringing();
+    int floor = app.budget <= CY_BUDGET_MIN, bow = 0;
     if (used + 8 < b)                          /* (a budget above what plays sheds nothing: cut from where it bites) */
         b = used + 8;
-    if (app.budget > CY_BUDGET_MIN)            /* modes first, down to the floor (measured: cutting voices first let */
+    if (!floor)                                /* modes first, down to the floor (measured: cutting voices first let */
         app_budget_set(b - modes);             /*  a bowed onset's modes grow, 34 xruns against 12; clamped at MIN) */
-    else if (app.gov_voices > 4u)
-        app.gov_voices = (uint8_t)(app.gov_voices - 2u);
+    /* (v1.1) then, for a bowed patch, at the floor, the tails of released notes (the quietest fade, two at a time),
+     * voices down to 4 (new notes then steal), and the bows: a bow costs its junction whatever the budget (the modes
+     * are a tenth of it), so with two or more bowing the next step goes with the modes, at once: a bow while three or
+     * more bow, else the tails; with two left, a single bow is the last step. Released notes ringing go with the
+     * modes at once too, whatever bows: a bowed slot uses fewer modes than the floor, so on a bowed line the modes
+     * a shed takes are the tails' (fm1-emu at 1.6x: a legato AETHER line, tails cut only a shed later, peaked at 95 %
+     * of a block). One bow at a time (the next waits for the last one's fade). Each cap is cut from where it bites
+     * (under what plays now). MALLET and RAIN keep v1.0's floor, voices down to 4: their tails are the sound (at 1.6x
+     * the tail cap cut 01's chords off at every release, where v1.0's voices alone had kept them clean) */
+    if (app_exciter() == CY_EXC_BOW && app.bow_on_tails && now - app.bow_on_t < APP_GOV_ONSET_MS)
+        app.gov_onset = 1;                     /* (a bowed chord's onset onto tails: learned, app_chord_guard) */
+    if (app_exciter() != CY_EXC_BOW && nb == 0) {
+        if (floor && app.gov_voices > 4u)
+            app_gov_voices_set(app.gov_voices - 2);
+    } else if (floor || nb >= 2 || (nr > 0 && app.gov_tails > 0)) {
+        if (nb > 2 || (floor && nb == 2 && app.gov_voices <= 4u && (nr == 0 || app.gov_tails == 0)))
+            bow = 1;
+        if (bow) {
+            if (!app.gov_bow_t || now - app.gov_bow_t >= APP_GOV_BOW_SETTLE_MS) {
+                app_gov_bows_set(nb - 1);      /* (the oldest bowed note fades: engine.c) */
+                app.gov_bows_ceil = app.gov_bows;
+                app.gov_bow_t = now ? now : 1u;
+            }
+        } else if (nr > 0 && app.gov_tails > 0) {
+            app_gov_tails_set((nr < app.gov_tails ? nr : app.gov_tails) - 2);
+        } else if (floor && app.gov_voices > 4u) {
+            app_gov_voices_set(app.gov_voices - 2);
+        }
+    }
+    app.ovl_t = now;                           /* (every shed spaces the fast ones: 100 ms) */
     app.gov_low_t = now;
 }
 static void app_gov_give(uint32_t now)
 {
+    int nb = app_gov_bowing();
     if (app.gov_voices < CY_NVOICES && app.gov_voices < app_voices_set()) {
-        app.gov_voices = (uint8_t)(app.gov_voices + 2u);
+        app_gov_voices_set(app.gov_voices + 2);
+    } else if (app.gov_tails < CY_NVOICES) {
+        app_gov_tails_set(app.gov_tails + 2);
     } else if (app.budget < app_detail_modes()) {
         int n = app.budget + 8;
         app_budget_set(n > app_detail_modes() ? app_detail_modes() : n);
+    } else if (app.gov_bows < CY_MAX_BOWED && nb >= app.gov_bows && nb > 0 &&
+               (!app.gov_bow_t || app.gov_bows < app.gov_bows_ceil || now - app.gov_bow_t >= APP_GOV_BOW_MEMORY_MS)) {
+        /* (v1.1) a bow back only while the cap binds (kept, it costs nothing), and only if the heaviest block plus
+         * one more bow's share of what the bows cost now stays under APP_GOV_BOW_GIVE_PM */
+        uint32_t idle = app.gov_idle_pm, pk = app.pk_hold;
+        uint32_t after = pk + (pk > idle ? (pk - idle) / (uint32_t)nb : 0u);
+        if (after >= APP_GOV_BOW_GIVE_PM) {
+            app.gov_low_t = now;
+            return;
+        }
+        app_gov_bows_set(app.gov_bows + 1);
     }
     app.gov_low_t = now;                       /* (2 s more of calm before the next step) */
 }
 static void app_governor(uint32_t now)
 {
     uint32_t cpu, pk, ovl = app_overloads;
+    int tails;
 #ifdef PLAT_HOST
     if (!app_gov_on)
         return;
@@ -1783,34 +2035,62 @@ static void app_governor(uint32_t now)
     pk = app_blk_pk;                           /* (read and cleared between two renders: one block's peak may go to */
     app_blk_pk = 0;                            /*  the next frame, never lost for long) */
 #endif
+    if (app.logo >= APP_LOGO_ON) {             /* (v1.1.1) the boot logo's load is its own and over in 2.35 s: read and
+                                                * forgotten (no shed, nothing learned, its overloads let go), so the
+                                                * player's budget, voices, tails and bows start as without it. A shed
+                                                * would come after its heaviest block anyway (the flick's onsets) */
+        app.ovl_seen = ovl;
+        return;
+    }
+    if (!app_sounding() && pk)                 /* (v1.1) what a block costs with nothing to play: fx, the platform */
+        app.gov_idle_pm += ((int32_t)pk - (int32_t)app.gov_idle_pm) / 8;
+    {   /* (v1.1) and what a held bow costs on this chip: the smoothed meter over the idle load, per bow, while bows
+         * sound alone, settled (half a second after a bowed chord began; app_chord_guard predicts onsets with it) */
+        int nb = app_gov_bowing();
+        uint32_t c = cpu * 10u;
+        if (nb > 0 && app_gov_ringing() == 0 && now - app.bow_on_t > 500u && c > app.gov_idle_pm)
+            app.gov_bow_pm += ((int32_t)((c - app.gov_idle_pm) / (uint32_t)nb) - (int32_t)app.gov_bow_pm) / 8;
+    }
+    app.gov_last_pk = pk;
     if (pk >= app.pk_hold || now - app.pk_hold_t >= 8000u) {
         app.pk_hold = pk;
         app.pk_hold_t = now;
     }
+    if (pk >= APP_GOV_TAILS_PK)                /* (v1.1 review: the tail cap's give-back waits APP_GOV_TAILS_MS) */
+        app.pk_tails_t = now;
     if (ovl != app.ovl_seen) {
         app.ovl_seen = ovl;
-        if (now - app.ovl_t >= 100u) {         /* (one long burst is one step, not a slide to the floor) */
-            app.ovl_t = now;
+        if (now - app.ovl_t >= 100u)           /* (one long burst is one step, not a slide to the floor) */
             app_gov_shed(32, now);
-        }
-    } else if (pk >= 800u && now - app.ovl_t >= 100u) {   /* a near miss: shed before the next onset overflows */
-        app.ovl_t = now;
+    } else if (pk >= APP_GOV_NEAR_PM && now - app.ovl_t >= 100u) {   /* a near miss: shed before an onset overflows */
         app_gov_shed(16, now);
     }
     if (now - app.gov_t < 500u)
         return;
     app.gov_t = now;
-    if (cpu > 80u)
+    if (cpu > 80u) {
         app_gov_shed(8, now);
-    else if (cpu >= 62u || app.pk_hold >= 600u)
+        return;
+    }
+    /* (v1.1 review) the tail cap comes back on its own, two a step, once APP_GOV_TAILS_MS passed with no shed and no
+     * block over APP_GOV_TAILS_PK: behind the 8 s peak-hold and the voices, one busy bowed passage (a near miss with a
+     * tail or two ringing cuts the cap to 0) left the quiet playing after it dry for 10-18 s (fm1-emu at 1.4x: a
+     * burst, then slow notes at 35 % mean, 60 % max), and the ambience came back in steps. A chord landing on ringing
+     * tails is app_chord_guard's (cy_engine_tails_off), and a near miss still cuts them at once */
+    tails = app.gov_tails < CY_NVOICES && cpu < 62u && now - app.pk_tails_t >= APP_GOV_TAILS_MS &&
+            now - app.ovl_t >= APP_GOV_TAILS_MS;
+    if (tails)
+        app_gov_tails_set(app.gov_tails + 2);
+    if (cpu >= 62u || app.pk_hold >= 600u)
         app.gov_low_t = now;
-    else if (now - app.gov_low_t >= 2000u)
+    else if (!tails && now - app.gov_low_t >= 2000u)   /* (one step at a time) */
         app_gov_give(now);
 }
 
-/* the chord guard (fix-app): a third note-on within 10 ms is a chord whose onsets land in the same blocks, and each
- * onset runs every mode of its slot through the excited kernel (contact and noise): four at budget 96 measured 102 %
- * of a block, the first chord's xrun, before the governor could see anything. So, before the third note reaches the
+/* the chord guard (fix-app): three note-ons within APP_CHORD_MS (v1.1: any three in 25 ms; v1.0: 10 ms from the
+ * first) are a chord whose onsets land in the same blocks, and each onset runs every mode of its slot through the
+ * excited kernel (contact and noise): four at budget 96 measured 102 % of a block, the first chord's xrun, before the
+ * governor could see anything. So, before the third note reaches the
  * engine, the budget drops to APP_CHORD_BUDGET (the engine reads it at the start of the render that takes the notes)
  * and the give-back waits as after a near miss. A melody or a dyad keeps DETAIL's budget. A DAW's chords arrive
  * together; the keys' and the UI's poll spread a played chord over a few blocks, which helps too */
@@ -1820,15 +2100,40 @@ static void app_chord_guard(uint32_t now)
     if (!app_gov_on)                           /* (the host and the browser: no governor, unless a test asks) */
         return;
 #endif
-    if (now - app.chord_t > 10u) {
-        app.chord_t = now;
-        app.chord_n = 0;
-    }
-    if (++app.chord_n >= 3u && app.budget > APP_CHORD_BUDGET) {
+    /* (v1.1) any three note-ons within APP_CHORD_MS: v1.0's 10 ms window opened at a chord's first note, so a chord
+     * the poll split 1 + 1 + 2 over 16 ms never counted to three, and its onset (112 % of a block at 1.6x) came
+     * before the governor could see it */
+    int chord = app.chord_n >= 2u && now - app.chord_t[0] <= APP_CHORD_MS;
+    app.chord_t[0] = app.chord_t[1];
+    app.chord_t[1] = now;
+    if (app.chord_n < 2u)
+        app.chord_n++;
+    if (chord && app.budget > APP_CHORD_BUDGET) {
         app_budget_set(APP_CHORD_BUDGET);
         app.gov_low_t = now;
         if (app.pk_hold < 700u)
             app.pk_hold = 700u, app.pk_hold_t = now;
+    }
+    /* (v1.1) a bowed chord onto released notes still ringing: the fresh bows' first blocks (a new slot sets up every
+     * mode) land on the tails, so two bows starting onto two AETHER tails peaked at 91-97 % of a block at 1.6x (102 %
+     * before the cap's chord rule), and the governor only saw it after. So at a bowed chord's second note, with tails
+     * ringing, the onset is predicted: the last frame's heaviest block (the tails and fx) plus the cap's worth of bows
+     * at one and a half times a held bow's measured cost (APP_GOV_BOW_PM until measured). If that reaches a near miss,
+     * or once a shed has followed such an onset on this chip (app_gov_shed learns it), the ringing tails fade first,
+     * over 5 ms, and the chord's next notes wait the two renders that takes (cy_engine_tails_off: a fading slot costs
+     * what it did ringing); a one-off that leaves the tail cap as it is. A chip with the headroom keeps its tails
+     * ringing on into the next chord; a melody (one note at a time) never triggers it (measured at 1.6x: 63-76 %) */
+    if (app_exciter() == CY_EXC_BOW) {
+        if (now - app.bow_on_t > APP_CHORD_MS || !app.bow_on_n) {
+            app.bow_on_t = now;
+            app.bow_on_n = 0;
+            app.bow_on_tails = (uint8_t)(app_gov_ringing() > 0);
+        }
+        if (app.bow_on_n < 255u)
+            app.bow_on_n++;
+        if (app.bow_on_n == 2u && app.bow_on_tails &&
+            (app.gov_onset || app.gov_last_pk + 3u * app.gov_bow_pm * app.gov_bows / 2u >= APP_GOV_NEAR_PM))
+            cy_engine_tails_off();
     }
 }
 
@@ -1875,6 +2180,10 @@ static void app_geom_update(uint32_t now)
 
 static void app_patch_now(void)                /* the engine and the geometry hear the patch now (KEYS, EXCITER) */
 {
+    app_logo_yield();                          /* (v1.1.1) the player's patch, never under the boot logo: while it fades
+                                                * out, the hand-over gives the engine the whole patch, this among it */
+    if (app.logo == APP_LOGO_END)
+        return;
     app_patch_build();
     app_geom_update(plat_ms());
     cy_engine_set_patch(&app_patch);
@@ -1889,7 +2198,9 @@ static void led_update(uint32_t now)
         ring[k] = 0;
         held[k] = (uint8_t)((app.keys >> k & 1u) && app.note[k] >= 0 ? (app.press[k] > 64u ? 3u : 2u) : 0u);
     }
-    if (!app.keymode) {                        /* TUNED: "ringing above -50 dB" is against the note's own peak, so a
+    if (app.logo >= APP_LOGO_ON) {             /* (v1.1.1) the boot logo lights no key: the keys stay dark through
+                                                * the boot, as before (its notes are no player's) */
+    } else if (!app.keymode) {                 /* TUNED: "ringing above -50 dB" is against the note's own peak, so a
                                                 * soft note glows as long as a loud one */
         for (k = 0; k < NKEYS; k++)            /* the keys' own notes: the engine's level of each key's newest slot */
             ring[k] = (uint8_t)(app_tel.key_level[k] > APP_RING_LV);
@@ -1918,7 +2229,7 @@ static void led_update(uint32_t now)
         uint8_t l;
         if (app.keymode) {                     /* SURFACE: the live vibration map, with hysteresis; nodes go dark */
             static const float UP[3] = {0.12f, 0.35f, 0.65f}, DN[3] = {0.08f, 0.28f, 0.55f};
-            float lv = app_tel.key_level[k];
+            float lv = app.logo >= APP_LOGO_ON ? 0.0f : app_tel.key_level[k];
             l = led_surf[k];
             while (l < 3u && lv >= UP[l])
                 l++;
@@ -1995,7 +2306,6 @@ static void app_edit_fill(void)
     const float *s = live ? app_target : app.mem_ok ? app_mem : 0;
     app_set.edit_preset = s ? (uint16_t)(live ? app.preset : app.mem_preset) : 0xFFFFu;
     app_set.edit_live = (uint8_t)(live != 0);
-    app_set.rsv2 = 0;
     for (i = 0; i < P_NPRESET; i++)
         app_set.edit[i] = (uint16_t)(s ? app_q16(s[i]) : 0u);
 }
@@ -2087,7 +2397,9 @@ static void app_load_stored(uint32_t now)
     }
     app.bank_crc_ok = 0;                       /* (CYMA-1 Sounds: GET_DIR's CRC is computed again) */
     app.octave = app_set.octave;
-    app.view = app_set.view;
+    app.view = CY_VIEW_SAND;                   /* every boot lands on the sand table, the splash's sand flowing into it
+                                                * (v1.1.3: a saved FIELD or MESH cut in over it at the splash's end);
+                                                * EDIT reaches the others. app_set.view still records the last one */
     if (!app_set.tour_done && app_set.tour_boots) {   /* the second boot: the tour has been seen */
         app_set.tour_done = 1;
         dirty = 1;
@@ -2146,11 +2458,19 @@ void app_init(void)
     cy_engine_init();
     cy_engine_seed(0x9E3779B9u);
     cy_params_defaults(app_norm);
-    app.page = app.prev_page = PG_PLATE;
+    app.page = PG_PLATE;
     app.lfo_rng = 0x6C8E9CF5u;                 /* the modulation's RNG: apart from the engine's and the UI's */
     app.focus_param = app.hint_param = app.touch_param = -1;
     app.later_page = -1;
     app.gov_voices = CY_NVOICES;
+    app.gov_idle_pm = 150u;
+    app.gov_bow_pm = APP_GOV_BOW_PM;
+    app.gov_tails = CY_NVOICES;
+#ifdef PLAT_HOST
+    app.gov_bows = CY_MAX_BOWED;               /* (the host, the browser: no governor unless a test asks) */
+#else
+    app_gov_bows_set(APP_GOV_BOWS_BOOT);
+#endif
     for (i = 0; i < NKEYS; i++)
         app.note[i] = -1;
     for (i = 0; i < 128u; i++)
@@ -2184,6 +2504,8 @@ void app_render(int32_t *lr, uint32_t n, uint32_t master_q12)
  * the room's tail (MASTER muted, fix-app), which otherwise stuttered through every erase. app_ui_init lets it go */
 void app_panic(void)
 {
+    app.logo = APP_LOGO_OFF;                   /* (v1.1.1) the boot logo too: the next frame gives the engine the
+                                                * player's patch and plate again */
     app_mute = 1;
     cy_engine_panic();
     app_sx_abort(0x40);                        /* (a USB question or staging: dropped, as declined) */
@@ -2257,14 +2579,19 @@ void app_ui_init(void)
     }
     touch_curve((int)fm_floorf(app_v(P_VEL_CURVE) + 0.5f));
     touch_sens((int)fm_floorf(app_v(P_PRESS_SENS) + 0.5f));
-    if (first)                                 /* (again after an update that did not commit: no second splash) */
+    if (first) {                               /* (again after an update that did not commit: no second splash) */
         app.boot_t = now ? now : 1u;
+        app.logo = (uint8_t)(app_set.flags & APP_SETF_QUIET ? APP_LOGO_OFF : APP_LOGO_ARMED);   /* (v1.1.1) */
+        app.logo_i = 0;
+        app.logo_end_t = 0;
+    }
     app.last_frame = now;
     app_mute = 0;
     ui_init();
 }
 void app_splash(void) { ui_splash_static(); }  /* §6.7: the UI's static first screen (the void); its splash runs in
-                                                * ui_frame's first 1.6 s, not blocking */
+                                                * ui_frame's first 6.15 s, not blocking (a key, button or detent
+                                                * cuts it short: ctl_splash_cut) */
 void app_redraw(void) { ui_redraw(); }
 
 static void app_fill_ui(uint32_t now)
@@ -2351,20 +2678,137 @@ static void app_fill_ui(uint32_t now)
     s->boot_t = app.boot_t;
 }
 
-#ifdef PLAT_WEB
-/* the browser's boot ends with a soft C4, a "ting" (§6.7) */
-static void app_ting(uint32_t now)
+/* ------------------------------------------------------------ the boot logo --- */
+/* (v1.1.1) Team EG's sonic logo, chime v3 (c) "long ring-out 2.0 s", played live by the engine at every boot (the
+ * device and the browser, which had a soft C4 "ting" at 1.5 s instead), never a stored sample. The patch: preset 24
+ * TEMPLE BELL carved 100 % to BELL, BLOOM 0, a short DECAY (x0.198) in a small room (ROOM 40, SIZE 0.8 s), struck
+ * hard at (43, 12), beside the tierce's nodal line. The notes, in time with the splash's credit (ms from boot_t, the
+ * splash's own 0): a soft E5 as the grains spring (30), a full G5 in flight (210), and the flick as they lock into the
+ * words (550): an E6-G6-B6 zip into an E7 "tk" (560-584) with a 4-semitone curl (poly pressure, TENSION 4) and let go
+ * onto DAMPER 90 (640-800). E and G are never let go: they ring out on their own, 60 dB under their peak by 2.0 s.
+ *
+ * The engine changes hands twice, each time through cy_engine_restart: at the start (the logo's plate and patch, then
+ * the engine and the room from cold, so the logo is the same whatever the boot preset is), and at the end, at
+ * APP_LOGO_END_MS (a sound 71 dB down) or sooner: the logo fades out over 8.7 ms on its own plate and patch,
+ * the engine starts again from cold, and only then (app_logo_hand, between frames) are the player's plate and patch
+ * handed over, as a first patch: the boot preset is then exactly what it is without the logo, and nothing of the
+ * bell glides into it.
+ *
+ * It belongs to the splash: MASTER sets its level as it sets everything's, and anything that would play or change the
+ * sound ends it at once: a key, a button or a detent (which also cut the splash), any MIDI channel message, a preset
+ * or parameter change from anywhere. The input is acted on as ever, behind the fade (about 12 ms, on the first touch
+ * of a boot only). Its patch lives only here: app_norm, the edits, the settings and the bank never see it. Its notes
+ * light no key, send no MIDI and are no tour step. GLOBAL's BOOT SOUND turns it off (GLO held on the GLOBAL page;
+ * saved with the settings): the boot is then silent, as before. A host script's "splash 0" starts on the plate: no
+ * splash, no logo (so every demo renders as before) */
+#define APP_LOGO_PRESET 23                     /* TEMPLE BELL */
+#define APP_LOGO_HAND_MS 250u                  /* the hand-over waits at most this for the engine (it takes ~12 ms) */
+static const struct { uint8_t id; float v; } APP_LOGO_P[] = {   /* over the preset, display units (as "param") */
+    {P_BLOOM, 0.0f}, {P_WANDER, 0.0f}, {P_STRETCH, 0.0f}, {P_VIBRATO, 0.0f}, {P_MORPH_DEPTH, 0.0f},
+    {P_LFO_POS, 0.0f}, {P_TENSION, 4.0f}, {P_PALM, 0.0f}, {P_DAMPER, 90.0f}, {P_CARVE, 100.0f},
+    {P_CARVE_TARGET, 1.0f}, {P_SHIMMER, 3.0f}, {P_DECAY, 0.198f}, {P_HARDNESS, 70.0f}, {P_NOISE, 4.0f},
+    {P_POS_X, 43.0f}, {P_POS_Y, 12.0f}, {P_BRIGHT, 10.0f}, {P_MICS, 60.0f}, {P_ROOM, 40.0f}, {P_SIZE, 0.8f},
+    {P_PREDELAY, 20.0f}, {P_DAMPING, 50.0f},
+};
+enum { APP_LG_ON, APP_LG_AT, APP_LG_OFF };
+static const struct { uint16_t t; uint8_t type, note, v; } APP_LOGO_EV[] = {   /* TUNED notes, as MIDI's (key -1) */
+    {30, APP_LG_ON, 76, 66}, {210, APP_LG_ON, 79, 120},                   /* E5, G5 */
+    {560, APP_LG_ON, 88, 81}, {567, APP_LG_ON, 91, 91}, {574, APP_LG_ON, 95, 100}, {584, APP_LG_ON, 100, 107},
+    {594, APP_LG_AT, 100, 127}, {603, APP_LG_AT, 100, 127}, {612, APP_LG_AT, 100, 80}, {621, APP_LG_AT, 100, 0},
+    {640, APP_LG_OFF, 88, 0}, {642, APP_LG_OFF, 91, 0}, {644, APP_LG_OFF, 95, 0}, {800, APP_LG_OFF, 100, 0},
+};
+#define APP_LOGO_NEV (sizeof APP_LOGO_EV / sizeof APP_LOGO_EV[0])
+static cy_patch_t app_logo_p;
+static cy_geom_in_t app_logo_g;
+
+/* between frames (the UI never sees the geometry change mid-frame), with the engine silent: the boot's first pass */
+static void app_logo_start(void)
 {
-    int key = app.keymode ? 7 : -1;
-    if (app.ting == 0 && now - app.boot_t >= 1500u) {
-        cy_engine_note_on(key, 60, 40);
-        app.ting = 1;
-    } else if (app.ting == 1 && now - app.boot_t >= 1650u) {
-        cy_engine_note_off(key, 60);
-        app.ting = 2;
-    }
+    static const cy_mod_t still = {0.0f, 0.0f, 0.0f, 0.0f, 0};
+    float n[P_NPARAMS];
+    uint32_t i;
+    cy_params_defaults(n);                     /* (the globals: their defaults, TUNE 0 among them) */
+    cy_preset_load(&CY_FACTORY[APP_LOGO_PRESET], n);
+    for (i = 0; i < P_NPRESET; i++)            /* (as a load does: app_preset_values) */
+        n[i] = app_ongrid((int)i, fm_clampf(n[i], 0.0f, 1.0f));
+    for (i = 0; i < sizeof APP_LOGO_P / sizeof APP_LOGO_P[0]; i++)
+        n[APP_LOGO_P[i].id] = fm_clampf(cy_param_norm(APP_LOGO_P[i].id, APP_LOGO_P[i].v), 0.0f, 1.0f);
+    cy_patch_build(n, &still, &app_logo_p, &app_logo_g);
+    if (app_logo_p.max_voices > app.gov_voices)   /* (the device governor's voices, as app_patch_build has them) */
+        app_logo_p.max_voices = app.gov_voices;
+    app_logo_p.vib_rate_hz = app_patch.vib_rate_hz;   /* (its VIBRATO is 0: the vibrato's clock runs on at the player's
+                                                       * rate, so the engine leaves the logo as it would silence) */
+    cy_geom_update(&app_logo_g);               /* the bell's plate, then its patch, then from cold: no glide in */
+    cy_engine_set_patch(&app_logo_p);
+    cy_engine_restart(0);
+    app.logo = APP_LOGO_ON;
+    app.logo_i = 0;
 }
+
+/* the logo ends (its time, or a touch): it fades out on its own plate and patch and the engine starts again from cold
+ * (cy_engine_restart's hand-over), then app_logo_hand gives it the player's. FREEZE, LATCH and DAMP as the app has
+ * them go in first, before whatever the touch then queues (a note, a FREEZE) */
+static void app_logo_end(uint32_t now)
+{
+    app.logo = APP_LOGO_END;
+    app.logo_end_t = now ? now : 1u;
+    cy_engine_restart(1);
+    cy_engine_freeze(app.frozen);
+    cy_engine_latch(app.latched);
+    cy_engine_damp(app.damping);
+}
+
+/* the hand-over: the engine has faded the logo out and waits, silent; between frames (app_logo_tick) */
+static void app_logo_hand(uint32_t now)
+{
+    app.logo = APP_LOGO_OFF;
+#ifdef PLAT_HOST                               /* (the governor forgets the logo's blocks since its last look: the next
+                                                * blocks are the player's, app_governor) */
+    app_gov_pk = 0;
+#else
+    app_blk_pk = 0;
 #endif
+    app.ovl_seen = app_overloads;
+    app_patch_build();
+    app_geom_update(now);                      /* (the geometry first: the engine resumes on the patch) */
+    cy_engine_set_patch(&app_patch);
+}
+
+static void app_logo_yield(void)
+{
+    if (app.logo == APP_LOGO_ARMED)            /* (before its first pass: it never starts) */
+        app.logo = APP_LOGO_OFF;
+    else if (app.logo == APP_LOGO_ON)
+        app_logo_end(plat_ms());
+}
+
+/* from app_input (every main-loop pass between frames: poll 0) and the UI's poll between the plate's strips (poll 1:
+ * its notes and its end, which only queue engine events; never its start or the hand-over, which publish geometry) */
+static void app_logo_tick(uint32_t now, int poll)
+{
+    uint32_t t = now - app.boot_t;
+    if (!poll && app.logo == APP_LOGO_ARMED) {
+        if (ui_spl_skip)                       /* (a host script's "splash 0") */
+            app.logo = APP_LOGO_OFF;
+        else
+            app_logo_start();
+    }
+    if (!poll && app.logo == APP_LOGO_END && (cy_engine_restart_ready() || now - app.logo_end_t >= APP_LOGO_HAND_MS))
+        app_logo_hand(now);
+    if (app.logo != APP_LOGO_ON)
+        return;
+    for (; app.logo_i < APP_LOGO_NEV && t >= APP_LOGO_EV[app.logo_i].t; app.logo_i++) {
+        int note = APP_LOGO_EV[app.logo_i].note, v = APP_LOGO_EV[app.logo_i].v;
+        if (APP_LOGO_EV[app.logo_i].type == APP_LG_ON)
+            cy_engine_note_on(-1, note, v);
+        else if (APP_LOGO_EV[app.logo_i].type == APP_LG_AT)
+            cy_engine_pressure(-1, note, v);
+        else
+            cy_engine_note_off(-1, note);
+    }
+    if (t >= APP_LOGO_END_MS)
+        app_logo_end(now);
+}
 
 #ifdef PLAT_HOST
 static void app_host_frame(void);
@@ -2384,8 +2828,12 @@ void app_frame(void)
     app_glide_step(now);                                              /* 4 glide */
     ctl_keymode_watch();
     app_patch_build();                                                /* 5 */
-    app_geom_update(now);                                             /* 6 (the LFO's steps rate-limited) */
-    cy_engine_set_patch(&app_patch);                                  /* 7 */
+    if (app.logo == APP_LOGO_ON) {
+        cy_geom_update(&app_logo_g);                                  /*   (v1.1.1: the boot logo's, until it ends) */
+    } else if (app.logo != APP_LOGO_END) {                            /*   (... and then the hand-over's) */
+        app_geom_update(now);                                         /* 6 (the LFO's steps rate-limited) */
+        cy_engine_set_patch(&app_patch);                              /* 7 */
+    }
     cy_engine_telemetry_get(&app_tel);
     app_governor(now);                                                /* 8 governor */
     app.edited = (uint8_t)app_is_edited();
@@ -2399,9 +2847,6 @@ void app_frame(void)
     app_speak(now);                                                   /* 12 speech */
     app_autosave(now);                                                /* 13 settings */
     app_sx_tick(now);                                                 /* 14 a USB question's footer and timeout */
-#ifdef PLAT_WEB
-    app_ting(now);
-#endif
 #ifdef PLAT_HOST
     app_host_frame();
 #endif
@@ -2510,6 +2955,11 @@ uint32_t cy_demo_hash(int id)
     cy_fx_init();                              /* live again, as the player left it */
     cy_engine_init();
     cy_engine_seed(0x9E3779B9u);
+    if (app.logo == APP_LOGO_ON || app.logo == APP_LOGO_END) {   /* (v1.1.1) a boot logo this cut short: over (its
+                                                                 * patch went with the engine's state) */
+        app.logo = APP_LOGO_OFF;
+        app.logo_end_t = plat_ms() ? plat_ms() : 1u;
+    }
     cy_engine_set_mode_budget(app.budget);
     app_patch_build();
     app_geom_update(plat_ms());                /* (always given whole: the geometry holds the demo's until then) */
@@ -2695,6 +3145,13 @@ int app_expect(const char *what, int *got)
     else if (!strcmp(what, "budget")) *got = app_tel.mode_budget;
     else if (!strcmp(what, "tour")) *got = app.tour;
     else if (!strcmp(what, "tour_done")) *got = app_set.tour_done;
+    else if (!strcmp(what, "splash")) *got = !ui_splash_done;               /* the boot splash still on the screen */
+    else if (!strcmp(what, "splash_end")) *got = (int)ui_spl_end;           /* when it ends, ms after boot (a cut) */
+    else if (!strcmp(what, "logo")) *got = app.logo;                        /* (v1.1.1) the boot logo: 0 none, 1
+                                                                             * due, 2 sounding, 3 fading out */
+    else if (!strcmp(what, "logo_end"))                                     /* ... when it ended, ms after boot */
+        *got = app.logo_end_t ? (int)(app.logo_end_t - app.boot_t) : -1;
+    else if (!strcmp(what, "boot_sound")) *got = !(app_set.flags & APP_SETF_QUIET);   /* GLOBAL's BOOT SOUND */
     else if (!strcmp(what, "peakq")) *got = app_peakq;
     else if (!strcmp(what, "compare")) *got = app.compare;
     else if (!strcmp(what, "glide")) *got = app.gliding;
@@ -2715,6 +3172,17 @@ int app_expect(const char *what, int *got)
     else if (!strcmp(what, "say_n")) *got = (int)app.say_n;
     else if (!strcmp(what, "master")) *got = (int)APP_GAIN(plat_master());   /* MASTER as the render gets it */
     else if (!strcmp(what, "bend100")) *got = (int)(app.bend * 100.0f + (app.bend < 0.0f ? -0.5f : 0.5f));
+    else if (!strcmp(what, "gov_bows")) *got = app.gov_bows;
+    else if (!strcmp(what, "bowed")) *got = app_gov_bowing();             /* (v1.1) held bowed notes now */
+    else if (!strcmp(what, "bowed_key")) {     /* (v1.1) the key of the first slot bowing (-1 none) */
+        *got = -1;
+        for (i = CY_NVOICES - 1; i >= 0; i--)
+            if (app_tel.voice_state[i] == CY_VS_BOWED)
+                *got = app_tel.voice_key[i];
+    }
+    else if (!strcmp(what, "gov_tails")) *got = app.gov_tails;
+    else if (!strcmp(what, "gov_onset")) *got = app.gov_onset;           /* (v1.1) learned: tails off at a chord */
+    else if (!strcmp(what, "gov_bow_pm")) *got = (int)app.gov_bow_pm;     /* (v1.1) a held bow's measured load */
     else if (!strcmp(what, "gov_voices")) *got = app.gov_voices;              /* (fix-app's) */
     else if (!strcmp(what, "max_voices")) *got = app_patch.max_voices;
     else if (!strcmp(what, "geom_pubs")) *got = (int)app.geo_pubs;
@@ -2840,6 +3308,14 @@ int app_host_cmd(const char *cmd, const char *a, const char *b, const char *c, c
         printf("demo_hash %d 0x%08X\n", n, cy_demo_hash(n));
     } else if (!strcmp(cmd, "shotmode")) {
         ui_shot_mode(atoi(a));
+    } else if (!strcmp(cmd, "splash")) {       /* 0: the boot splash ends at the next frame, the sand an even
+                                                * sprinkle as at its end: a script's screen is live from then on, as
+                                                * "tour 0" ends the tour. v1.1.1: the boot logo is the splash's, so
+                                                * it does not play either (at the script's start, it never starts) */
+        if (atoi(a) == 0) {
+            ui_spl_skip = 1;
+            app_logo_yield();                  /* (v1.1.1: and no boot logo, which is the splash's) */
+        }
     } else if (!strcmp(cmd, "tour")) {         /* N: that step now, the ones before it done (0 off) */
         int st = clamp(atoi(a), CY_TOUR_OFF, CY_TOUR_DONE);
         if (st == CY_TOUR_OFF)
@@ -2854,6 +3330,11 @@ int app_host_cmd(const char *cmd, const char *a, const char *b, const char *c, c
     } else if (!strcmp(cmd, "governor")) {     /* 1: the device's governor runs on the host, fed by "cpu N" */
         app_gov_on = (uint8_t)(atoi(a) != 0);
         app.gov_t = app.gov_low_t = plat_ms();
+        if (!app_gov_on) {                     /* (v1.1) off: the engine's own caps again (the host never sheds) */
+            app_gov_bows_set(CY_MAX_BOWED);
+            app_gov_tails_set(CY_NVOICES);
+            app.gov_bow_t = 0;
+        }
     } else if (!strcmp(cmd, "cpu")) {
         app_gov_cpu = (uint8_t)clamp(atoi(a), 0, 255);
     } else if (!strcmp(cmd, "geompubs")) {     /* N: the geometry's SHAPE / POS publish count, to measure from */

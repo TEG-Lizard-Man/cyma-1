@@ -10,9 +10,10 @@
 #
 #   --copy DIR     build and test an rsync'd copy at DIR/instrument (a module agent's private copy; the device build
 #                  needs DIR inside the project, which tools/build_device.sh mounts). Default: this tree, in place
-#   --device       also tools/build_device.sh APP --no-ble: every check must print ok, the image must fit fm1pkg's app
-#                  slot (581,564 B), the identity must be fm1.toml's id_prefix (in the build log and in the package),
-#                  and build/SHA256SUMS is written (docs/SPEC.md quotes it, checked against the files)
+#   --device       also tools/build_device.sh APP --no-ble [--release X.Y[.Z], fm1.toml's release]: every check must print
+#                  ok, the image must fit fm1pkg's app slot (581,564 B), the identity must be fm1.toml's id_prefix (in
+#                  the build log and in the package), and build/SHA256SUMS is written (docs/SPEC.md quotes it, checked
+#                  against the files)
 #   --perf         also (implies --device) tools/emu_perf.py: the package, unmodified, in fm1-emu at the FM-1's 205
 #                  instructions/us; gates on the slowest audio block, xruns, the UI frame, note latency and idle
 #                  redraws (about 3 minutes; docker). Its figures go into docs/SPEC.md
@@ -50,7 +51,14 @@ SRC_APP=$(dirname "$TOOLS")
 ROOT=$SRC_APP
 while [ "$ROOT" != "/" ] && [ ! -d "$ROOT/reference/fm1-base" ]; do ROOT=$(dirname "$ROOT"); done
 [ -d "$ROOT/reference/fm1-base" ] || ROOT=$(dirname "$SRC_APP")   # (the project root: instrument/'s parent)
-B="${FM1_BASE:-$ROOT/reference/fm1-base}"
+# fm1-base: FM1_BASE, else the Team EG platform that v1.1.1 and later are built on, platform/fm1-base-teg (made by
+# tools/get_platform.sh from the pinned upstream and platform/patches; its TEG_FORK.md: the main loop's USB-retry
+# stall and the boot's MASTER level fixed), else reference/fm1-base (upstream: not the release's package). Exported,
+# so tools/build_device.sh and the font tools build the same tree
+if [ -n "${FM1_BASE:-}" ]; then B="$FM1_BASE"
+elif [ -d "$ROOT/platform/fm1-base-teg/tools" ]; then B="$ROOT/platform/fm1-base-teg"
+else B="$ROOT/reference/fm1-base"; fi
+export FM1_BASE="$B"
 PY=python3
 [ -x "$ROOT/.venv312/bin/python" ] && PY="$ROOT/.venv312/bin/python"
 export DYLD_LIBRARY_PATH="/opt/homebrew/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
@@ -357,12 +365,23 @@ if [ $ARTIFACT -eq 1 ] && [ $WASM_OK -eq 1 ]; then step artifact_sb artifact_sb_
 APP_SLOT=581564      # fm1pkg.py APP_SLOT 0x8DFBC: what build.py enforces (spec §8.6's "570 KB" is 583,680 B, the looser)
 device_build() {
     case "$APP/" in "$ROOT"/*) ;; *) echo "APP is outside $ROOT: tools/build_device.sh mounts only the project"; return 77 ;; esac
+    # the release (fm1.toml's own release key, v1.1.1): fm1-base's build.py --release X.Y[.Z] gives the package the
+    # identity id_prefix + XXYYZZ (FM-1_94010101 for 1.1.1, FM-1_94010100 for 1.1) and the screen reader's name
+    # "CYMA-1 1.1.1", and names it cyma-1-X.Y.Z.fwsc; it is renamed build/cyma-1.fwsc, the name the README, SHA256SUMS
+    # and the emulator tools use
+    rel=$(sed -n 's/^release *= *"\([0-9.]*\)".*/\1/p' "$APP/fm1.toml" | head -1)
     rm -f "$APP/build/cyma-1.fwsc" "$APP/build/SHA256SUMS"
-    if ! "$ROOT/tools/build_device.sh" "$APP" --no-ble; then
+    [ -z "$rel" ] || rm -f "$APP/build/cyma-1-$rel.fwsc"
+    if [ -n "$rel" ]; then set -- --release "$rel"; else set --; fi
+    if ! "$ROOT/tools/build_device.sh" "$APP" --no-ble "$@"; then
         e=$(grep -m1 -E 'error:|truncated|undefined reference|multiple definition|FAIL' "$OUT/device.log" |
             sed 's|^.*/instrument/||' | cut -c1-140)
         echo "device build failed: ${e:-see device.log}"
         return 1
+    fi
+    if [ -n "$rel" ]; then
+        [ -s "$APP/build/cyma-1-$rel.fwsc" ] || { echo "no cyma-1-$rel.fwsc (build.py --release $rel)"; return 1; }
+        mv -f "$APP/build/cyma-1-$rel.fwsc" "$APP/build/cyma-1.fwsc"
     fi
     bad=$(grep -E '^\s+(FAIL|fail|warn|WARN)' "$OUT/device.log" | head -5)
     nok=$(grep -cE '^\s+ok\s' "$OUT/device.log")
@@ -382,7 +401,7 @@ print(spec.package_identity(open(sys.argv[1], "rb").read()) or "")' "$APP/build/
     # provenance: nothing authenticates a .fwsc, so its hash is recorded where the README and docs/SPEC.md read it
     (cd "$APP/build" && shasum -a 256 cyma-1.fwsc cyma-1.bin > SHA256SUMS) || { echo "SHA256SUMS not written"; return 1; }
     sha=$(cut -c1-64 "$APP/build/SHA256SUMS" | head -1)
-    echo "$nok checks ok; image $img B (<= $APP_SLOT, the app slot); $(wc -c < "$APP/build/cyma-1.fwsc" | tr -d ' ') B package, identity $ident, sha256 $sha (build/SHA256SUMS); never flashed"
+    echo "$nok checks ok; image $img B (<= $APP_SLOT, the app slot); $(wc -c < "$APP/build/cyma-1.fwsc" | tr -d ' ') B package, identity $ident${rel:+ (release $rel)}, sha256 $sha (build/SHA256SUMS); never flashed"
 }
 DEVICE_OK=0
 if [ $DEVICE -eq 1 ]; then
