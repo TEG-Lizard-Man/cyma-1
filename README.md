@@ -5,8 +5,10 @@ A playable Chladni plate: original firmware for the M-VAVE FM-1 pocket synth.
 ![CYMA-1 booting: the sand spells TEAM EG & LIZARD_MAN, bursts into the CYMA-1 title and flows into the sand table](media/boot-intro.gif)
 
 *The boot, from power-on: the sand springs into the credit as Team EG's bronze bell rings, holds, bursts into the
-title, then flows into the sand table. Rendered by the same C code that runs on the FM-1.
-[Watch it with its sound](media/boot-intro.mp4).*
+title, then flows into the sand table. Rendered by the same C code that runs on the FM-1.*
+
+▶ **[Watch the trailer (40 s, with sound)](media/cyma-1-trailer.mp4)**: strikes, the plate melting from circle to
+star, the three views and a handpan groove. Every frame and every sound is the real firmware.
 
 **Runs on a real FM-1** since 2026-10-29. The current release is **v1.1.3** ([what's new](#whats-new-v11-to-v113),
 [status](#status-and-safety)).
