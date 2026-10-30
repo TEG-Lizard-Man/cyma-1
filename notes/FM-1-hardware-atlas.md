@@ -35,7 +35,7 @@
 
 **Rules this atlas follows:**
 - **No hardware modifications.** The user will not solder or modify the FM-1. Anything that needs a mod appears only in clearly marked "out of policy" rows, for completeness.
-- **No writes without asking.** Never flash or write to the FM-1 without the user's explicit OK for each step (`docs/CYMA-1-install-runbook.md`). The research itself touched no USB device, no MIDI port and no unit.
+- **No writes without asking.** Never flash or write to the FM-1 without the user's explicit OK for each step (`notes/INSTALL.md`). The research itself touched no USB device, no MIDI port and no unit.
 - **Licences.**
   - `R/fm1_open/sdk/lib/libfm1_engine.a`: its terms grant use, linking and redistribution on the FM-1 only. They contain no explicit ban on reverse engineering, but grant no permission for it either. No track disassembled it; only fm1_open's public headers and its GPL app sources were read. Those headers expose no FFT, EQ, SRC or CORDIC.
   - **Stock V16:** proprietary. It was studied for interoperability only, and nothing was copied.
@@ -430,7 +430,7 @@ Outputs are in `[fw]` (local only: never commit).
 | **BLE GATT** (identical) | 0x1800 Device Name; **0xAE40**: AE41 write-without-response (value 0x62), AE42 notify (0x64, CCCD 0x65); **BLE-MIDI** 03B80E5A… at 0x70-0x73. No DIS or battery service. | same | AE41 carries raw `00 59` syscmd frames (≥ 7 B, len + 7 ≤ 1046). **Never write AE41 on a stock unit.** | `[proto]/gatt.py`; `[proto]/dis/app_V15.dis` 0x12c2-0x15b4 (tbh on handle − 0x62) | V |
 | **Bluetooth Classic** | One SDP record: **"JL_A2DP", AudioSink 0x110B**, AVDTP PSM 0x19, profile 0x110D v1.3. No HFP, AVRCP or SPP records. Hardware SBC decode, IRQ on CPU1. | same; task "bt_sbc_dec" | The stock FM-1 is a Bluetooth speaker | `[proto]/fw` V15 app+0x73e78, V16 +0x70f34; `[proto]/dis/app_V15.dis` 0x3e250-0x3e5e4 | V |
 | **Vendor syscmd** (USB SysEx 7-bit packed; BLE AE41 raw). Frame: `[00 59][cmd][len u24 LE][payload][~sum8]`, LSB-first 8→7 packing over SysEx. | **17 (0x11)** device info, 27 B (the handshake `F0 00 32 45 00 00 00 40 7F F7` unpacks to cmd 0x11, not "parameter 0x40"). **18:** 13-B descriptor. **21:** drain ring. **33-36:** callback-object ops (null statically; dangerous). **48 (0x30):** data/OTA pull with "success\0" at 0xE0000000/0xF0000000. Others: no-ops. tbh at 0x2028B1E. | Same set, as an if-chain at 0x20237E8. **No new command class.** | Keep compatibility only where recovery needs it (0x11/0x30 framing). **Never fuzz 33-36 or 48.** | `[fw]/dis/v153.objdump.txt` 0x2028B1E-0x2028B38; `[fw]/out/v16_syscmd.txt`; `R/FM-1-RE/docs/io/11-ota-protocol.md:29-67,105-140` | V |
-| **Hidden triggers** | USB-MIDI `F0 22 24 35 7F F7` = **enter OTA upgrade**. `F0 22 24 35 7D F7` = **ROM UBOOT soft key** (writes "usb_update_mode" to NVRAM 0x1C7FD80, then resets via P3_PR_PWR bit 4). `F0 35 59 xx xx xx F7` arms the vendor channel. | Same. V16 tests `(b \| 2) == 0x7F`, so it accepts both 7F and 7D. | **Red lines:** never send 7F or 7D outside the runbook's one sanctioned backup step | `[fw]/dis/v163.objdump.txt` 0x2024D28-0x2024D6E, 0x201A76E-0x201A78E | V |
+| **Hidden triggers** | USB-MIDI `F0 22 24 35 7F F7` = **enter OTA upgrade**. `F0 22 24 35 7D F7` = **ROM UBOOT soft key** (writes "usb_update_mode" to NVRAM 0x1C7FD80, then resets via P3_PR_PWR bit 4). `F0 35 59 xx xx xx F7` arms the vendor channel. | Same. V16 tests `(b \| 2) == 0x7F`, so it accepts both 7F and 7D. | **Red lines:** never send 7F or 7D outside the install guide's one sanctioned backup step | `[fw]/dis/v163.objdump.txt` 0x2024D28-0x2024D6E, 0x201A76E-0x201A78E | V |
 | **Factory / test modes** | **None found:** no factory or test menu, shell or AT-console strings | None found | The only "service mode" is the mask-ROM UBOOT (MSC device 4C4A:8057 with vendor SCSI 0xFB/0xFC/0xFD) | `[fw]/strings/`; `R/jl-uboot-tool/docs/usb-protocol.md:1-25` | S (absence) |
 | **DX7 SysEx** | 32-voice bulk `F0 43 0n 09 20 00`; single voice `F0 43 0n 00 1B`; parameter change `F0 43 1n` | Adds bank send/receive in the UI ("Sending Bank %c") | Not relevant to CYMA-1 | `[fw]` strings and handlers | V |
 | **User records** | (V15 VM/USR) | Headers 'D7Q4'/'D7R2' with u16 version and size, data CRC and header CRC. A/B 36 KB slots at 0xDA000/0xE3000; 12 KB slots from 0xED000 (outside the JLFS table). | A torn-write-safe pattern worth copying (CYMA-1 already versions its objects) | `[fw]/dis/v163.objdump.txt` 0x201A582-0x201A6A2 | V |
@@ -526,7 +526,7 @@ Sources: `docs/CYMA-1-spec.md` §3.5, §3.8, §3.14; `docs/CYMA-1-voice-spec.md`
 
 **Approval and recovery:**
 - Every install or write needs the user's explicit OK at that moment.
-- Follow `docs/CYMA-1-install-runbook.md` gates:
+- Follow the gates of `notes/INSTALL.md`:
   - pinned package sha;
   - `--info` shows **FM-1_015**;
   - a verified full backup;
@@ -536,7 +536,7 @@ Sources: `docs/CYMA-1-spec.md` §3.5, §3.8, §3.14; `docs/CYMA-1-voice-spec.md`
 
 **Never send:**
 - `F0 22 24 35 7F F7`.
-- `F0 22 24 35 7D F7`, except the runbook's one sanctioned backup step, with the user's OK.
+- `F0 22 24 35 7D F7`, except the install guide's one sanctioned backup step, with the user's OK.
 
 **Never write, fuzz or touch:**
 - syscmd 33-36 and 48: never fuzz.
@@ -571,7 +571,7 @@ Sources: `docs/CYMA-1-spec.md` §3.5, §3.8, §3.14; `docs/CYMA-1-voice-spec.md`
 | # | Step | What it decides | Risk |
 |---|---|---|---|
 | 1.1 | Host reads the descriptors passively (`ioreg -p IOUSB -l -w0`, `system_profiler SPUSBDataType`) | 4C4A:C755, endpoints (EP2-OUT 288, EP3-IN 288, EP4 bulk 64), the 5-interface layout | None |
-| 1.2 | `tools/fm1_probe.py` identity check (cmd 0x11 only) | FM-1_015 on this unit (a runbook gate) | None |
+| 1.2 | `tools/fm1_probe.py` identity check (cmd 0x11 only) | FM-1_015 on this unit (an install-guide gate) | None |
 | 1.3 | Analog bench: 24-bit UAC tones and sweeps through stock; record J7 into 10 kΩ and 32 Ω loads | DAC family (noise floor ≈ −103 dB for CS4344 at 3.3 V vs ≈ −96 dB for CJC4344; a −9 to −10 dB shelf near 16 kHz would mean de-emphasis, i.e. U9 pin 2 is strapped), full scale (VA), U5 clip point | None (low volume) |
 | 1.4 | Speaker path: L-only, R-only, L−R; level ramp; USB-meter current with and without a plug in J7 | Whether the amp sums L+R; AGC onset; whether the jack shuts the amp down or only cuts its input | None |
 | 1.5 | Phone BLE explorer (nRF Connect, LightBlue): **read names and properties only.** Do not write AE41 or subscribe to AE42. | The GATT layout (0x1800, AE40 at 0x60, BLE-MIDI at 0x70) | None |
@@ -579,7 +579,7 @@ Sources: `docs/CYMA-1-spec.md` §3.5, §3.8, §3.14; `docs/CYMA-1-voice-spec.md`
 | 1.7 | Charging: LED2 colours while charging and when full, charging with the switch off, USB-meter current | Charger class and position | None |
 | 1.8 | Unit off: USB-C breakout plus multimeter, CC1/CC2 to GND, VBUS to GND | 5.1 kΩ sink? Rules C-to-C host operation in or out | None |
 
-**Stage 2: one PROBE diagnostic install** (fm1-base app). Prerequisites: all runbook gates and the user's OK. The probe writes no flash at runtime and keeps fm1-base's USB-MIDI updater and boot guard. Results appear on screen and via `F0 7D 43 50 01 F7` / `03`.
+**Stage 2: one PROBE diagnostic install** (fm1-base app). Prerequisites: all install-guide gates and the user's OK. The probe writes no flash at runtime and keeps fm1-base's USB-MIDI updater and boot guard. Results appear on screen and via `F0 7D 43 50 01 F7` / `03`.
 
 | # | Step (in run order) | What it decides | Risk |
 |---|---|---|---|
