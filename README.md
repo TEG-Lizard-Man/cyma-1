@@ -11,6 +11,8 @@ title, then flows into the sand table. Rendered by the same C code that runs on 
 **Runs on a real FM-1** since 2026-10-29. The current release is **v1.1.3** ([what's new](#whats-new-v11-to-v113),
 [status](#status-and-safety)).
 
+📄 **[Read the NFO](CYMA-1.nfo)**: release info and greetz, scene style.
+
 Each key strikes, bows or rains on a virtual metal plate. The sand on the 240×240 screen settles into the nodal figure you hear, because the picture and the sound come from the same modal simulation:
 
 - key pressure bows harder;
