@@ -1,0 +1,40 @@
+From 8b218af9bfbce4e739d0f1ea831627aa8a8688f7 Mon Sep 17 00:00:00 2001
+From: TEG-Lizard-Man <349983952+TEG-Lizard-Man@users.noreply.github.com>
+Date: Thu, 29 Oct 2026 22:25:11 -0500
+Subject: [PATCH 2/3] MASTER read before the audio starts: no boot sound at
+ half level with the pot at zero
+
+The loop's smoothing started mid-way (2048) and, on a busy boot, took about
+0.25 s to reach the pot, so a boot sound played its first moment at half
+level whatever the knob said (seen on a unit running CYMA-1 1.1.2).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ device/main_fm1.c | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/device/main_fm1.c b/device/main_fm1.c
+index 8998cae..77463f1 100644
+--- a/device/main_fm1.c
++++ b/device/main_fm1.c
+@@ -817,6 +817,20 @@ static void fm1_main(void)
+     fm1b_dbg.max_us = 0;
+     fm1_input_init();
+     fm1_adc_init();
++    {   /* MASTER read before the audio starts, so the first block plays at the pot's level. The loop's smoothing starts
++         * mid-way (2048) and, on a busy boot, took about 0.25 s to reach the pot: a boot sound played its first moment
++         * at half level whatever the knob said, then fell (with MASTER at zero: a burst, then silence). The first
++         * conversion after the converter's start is dropped; the next four are averaged. No reading: as before */
++        int32_t a, s = 0, k, n = 0;
++        (void)fm1_adc_read(FM1_ADC_MASTER);
++        for (k = 0; k < 4; k++)
++            if ((a = fm1_adc_read(FM1_ADC_MASTER)) >= 0)
++                s += a, n++;
++        if (n) {
++            knob = s * 16 / n;
++            master_pos = mirror_in_master(remote.master >= 0 ? (uint32_t)remote.master : (uint32_t)(knob / 4));
++        }
++    }
+     panel_init();
+     led_pos_init();
+ #if FM1B_CPU2

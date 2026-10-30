@@ -3,3 +3,4 @@ instrument/dist/
 __pycache__/
 .DS_Store
 *.fwsc
+platform/fm1-base-teg/

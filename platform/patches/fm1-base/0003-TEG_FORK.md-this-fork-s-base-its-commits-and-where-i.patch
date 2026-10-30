@@ -1,0 +1,55 @@
+From a0f2af24e62fc501aa1b57b7962c74db04f2563c Mon Sep 17 00:00:00 2001
+From: TEG-Lizard-Man <349983952+TEG-Lizard-Man@users.noreply.github.com>
+Date: Thu, 29 Oct 2026 23:20:00 -0500
+Subject: [PATCH 3/3] TEG_FORK.md: this fork's base, its commits and where it
+ comes from (fork only, not for upstream)
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ TEG_FORK.md | 37 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+ create mode 100644 TEG_FORK.md
+
+diff --git a/TEG_FORK.md b/TEG_FORK.md
+new file mode 100644
+index 0000000..038b14a
+--- /dev/null
++++ b/TEG_FORK.md
+@@ -0,0 +1,37 @@
++# fm1-base-teg: the Team EG platform
++
++fm1-base with two fixes on top. CYMA-1 is built on it from v1.1.1 on. Everything in it stays MPL-2.0, like fm1-base
++and felucca-bsp.
++
++## Base
++
++| | Commit | What it is |
++|---|---|---|
++| fm1-base ([charlesvestal/fm1-base](https://github.com/charlesvestal/fm1-base)) | `086cd0c` | bsp -> b413cd8: memset and memcpy a word at a time (felucca-bsp#6) |
++| bsp: felucca-bsp ([hugelton/felucca-bsp](https://github.com/hugelton/felucca-bsp)) | `b413cd8` | the merge of felucca-bsp#6 |
++
++## The fork's commits (branch `teg/platform` in both repositories)
++
++| Repository | Commit | What it changes |
++|---|---|---|
++| bsp | `7f4693a` usb.c: usb_retry in two steps | With no USB host attached (on battery, or on a charger without data lines), the main loop no longer stalls once a second. A retry was a 25 ms wait and six SIE timeouts: 29–41 ms in which keys, TRS MIDI and the screen waited. It is now two steps on separate passes, timed instead of waited, and costs 0.5–1.8 ms (fm1-emu, 205 MHz) |
++| fm1-base | bsp -> `7f4693a` | the bump |
++| fm1-base | MASTER read before the audio starts | `device/main_fm1.c` reads the MASTER pot before the audio starts, so a boot sound plays at the knob's level from its first block. It used to start at half level and fall to the pot's level about 0.25 s later |
++| fm1-base | TEG_FORK.md | this file |
++
++Unchanged:
++- the boot's USB start;
++- safe mode;
++- everything while USB is up;
++- the update loader (its `ota.bin` builds byte for byte the same);
++- the host and browser builds, which compile neither change.
++
++## Where it comes from
++
++CYMA-1's repository rebuilds this tree from the two upstream commits above and its `platform/patches/` (made with
++`git format-patch`), with `tools/get_platform.sh`.
++
++- Don't pull here, and don't run `git submodule update --remote`. The bsp gitlink records the patched commit.
++- To move to a newer upstream, apply the patches to it (felucca-bsp's in `bsp/` first), redo the bump and rebuild. The
++  package's hash then changes.
++- Once upstream has both fixes, retire this fork.

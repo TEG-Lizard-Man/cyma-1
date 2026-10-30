@@ -1,0 +1,125 @@
+From 7f4693af3a469620fbc219c0f40cb74eb4134620 Mon Sep 17 00:00:00 2001
+From: TEG-Lizard-Man <349983952+TEG-Lizard-Man@users.noreply.github.com>
+Date: Thu, 29 Oct 2026 16:26:29 -0500
+Subject: [PATCH] usb.c: usb_retry in two steps, so a main loop with no USB
+ host no longer stalls once a second
+
+With no host attached (on battery, or a charger without data lines) the SIE does not
+answer, usb.up stays 0, and usb_retry ran usb_start from the main loop once a second:
+fm1_delay_ms(25), then six SIE writes that each waited out their 20000 polls. Keys,
+TRS MIDI and the screen waited; the audio ISR ran on. In fm1-emu at 205 MHz a try
+held the main loop 29 ms with nothing playing and 41 ms while a firmware played:
+each of the 25 one-millisecond waits overran by the audio ISR running when it ended.
+
+usb_retry now takes a try in two steps across the main loop's passes:
+fm1_usb_reset on one pass, then the attach (usb_attach_sie, the second half of
+usb_start) on the first pass with now_ms more than 26 ms on (25 ms at least, now_ms
+counting whole milliseconds), instead of a wait. In that attach an unanswered first
+write ends the try: the SIE is not running, and each of the five writes after it
+would time out too. A try then costs the main loop one SIE timeout.
+
+Unchanged:
+- usb_start at boot: the same reset, 25 ms wait, writes and "timeouts < 3" test;
+- a SIE that answers gets every write, in the same order, so USB comes up as
+  before: a cable plugged in later is up at the next try, within a second;
+- nothing runs while usb.up is 1; usb_detach and usb_cdc_switch as before;
+- the update loader (FELUCCA_LOADER) keeps the old usb_retry, so its image does
+  not change (ota.bin built byte for byte the same).
+
+Measured in fm1-emu, which has no USB model (the SIE never answers, as with no
+cable), with CYMA-1 1.1 on fm1-base:
+- a try held the main loop 29.1-29.5 ms idle and 40.5-41.4 ms while playing at
+  205 MHz (31-47 ms at 146 MHz); now 0.5-0.9 ms idle and 0.5-1.8 ms while playing
+  (0.7-2.5 ms at 146 MHz), the reset step a few instructions;
+- MIDI to sound at 205 MHz, the 64 notes of its play scenario: p90 39.9 -> 7.4 ms,
+  max 45.2 -> 9.6 ms; 203 notes at every phase of the second: p99 33.9 -> 10.4 ms,
+  max 47.4 -> 12.6 ms; 0 xruns before and after;
+- with the emulator's SIE made to answer from 3.5 s (a cable plugged in), USB is
+  up at 4.027 s (4.026 s before); answering from power-on, at boot as before, and
+  no try follows.
+Not yet run on a device in this form.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ chip/usb.c | 49 ++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 44 insertions(+), 5 deletions(-)
+
+diff --git a/chip/usb.c b/chip/usb.c
+index bdf6769..8596631 100644
+--- a/chip/usb.c
++++ b/chip/usb.c
+@@ -1593,13 +1593,15 @@ static void usb_poll(void)                              /* TIMER5 ISR, 2 kHz */
+ #endif
+ }
+ 
+-static void usb_start(void)                             /* boot, or main-loop retry while usb.up == 0 */
++/* The second half of usb_start, once the reset has had its 25 ms: the controller attached and the SIE set up. A
++ * dead SIE leaves USB off. With quick (usb_retry), an unanswered first write already does: without a cable the SIE
++ * does not answer, and each of the five writes after it would wait out its own 20000 polls too. */
++static void usb_attach_sie(uint32_t quick)
+ {
+-    usb.timeouts = 0;
+-    fm1_usb_reset();                                    /* reset whatever the ROM left */
+-    fm1_delay_ms(25);
+     fm1_usb_attach(ep0buf);
+     sie_wr(S_POWER, 0x60);
++    if (quick && usb.timeouts)
++        return;
+     sie_wr(S_INTRUSBE, 0x07);                           /* suspend, resume, reset (polled) */
+     sie_wr(S_INTRTX1E, 0x01);
+     sie_wr(S_INTRTX2E, 0);
+@@ -1609,9 +1611,21 @@ static void usb_start(void)                             /* boot, or main-loop re
+     usb.up = usb.timeouts < 3u;                         /* a dead SIE leaves USB off */
+ }
+ 
++static void usb_start(void)                             /* boot: waits out the reset (usb_retry does not) */
++{
++    usb.timeouts = 0;
++    fm1_usb_reset();                                    /* reset whatever the ROM left */
++    fm1_delay_ms(25);
++    usb_attach_sie(0);
++}
++
+ /* Powered on without a cable, the SIE does not answer and usb_start leaves
+  * USB off: retry once a second from the main loop so a cable plugged in
+- * later still enumerates. */
++ * later still enumerates. A try is usb_start in two steps, so the main loop
++ * (the keys, MIDI, the screen) never waits in it: the reset on one pass, the
++ * attach on the first pass 25 ms later. The update loader's loop has nothing
++ * else to serve: it keeps usb_start whole, and its image as it was. */
++#ifdef FELUCCA_LOADER
+ static void usb_retry(uint32_t now_ms)
+ {
+     static uint32_t t;
+@@ -1621,6 +1635,31 @@ static void usb_retry(uint32_t now_ms)
+     usb.retries++;
+     usb_start();
+ }
++#else
++static void usb_retry(uint32_t now_ms)
++{
++    static uint32_t t;
++    static uint8_t settling;                            /* reset done, the attach next */
++    if (usb.up || usb.detached) {
++        settling = 0;
++        return;
++    }
++    if (settling) {
++        if (now_ms - t > 26u) {                         /* 25 ms at least: now_ms counts whole ms, may trail by 1 */
++            settling = 0;
++            usb_attach_sie(1);
++        }
++        return;
++    }
++    if (now_ms - t < 1000u)
++        return;
++    t = now_ms;
++    usb.retries++;
++    usb.timeouts = 0;
++    fm1_usb_reset();
++    settling = 1;
++}
++#endif
+ 
+ static void usb_detach(void)
+ {

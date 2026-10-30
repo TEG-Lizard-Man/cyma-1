@@ -1,21 +1,24 @@
 #!/bin/sh
 # Build an fm1-base app into a device .fwsc package, entirely inside the pinned JieLi toolchain container.
 #
-#   tools/build_device.sh APP_DIR [build.py options...]      e.g.  tools/build_device.sh build-test/template --no-ble
+#   tools/build_device.sh APP_DIR [build.py options...]      e.g.  tools/build_device.sh instrument --no-ble --release 1.1.3
 #   tools/build_device.sh --shell                             a shell in the same container (debugging)
 #
 # Build tooling only: this never touches USB, never flashes, never sends MIDI.
 #
 # How it works: fm1-base's tools/build.py runs *inside* a linux/amd64 container of the image built from
-# reference/optimist/tools/docker/Dockerfile (JieLi toolchain 20250324.1, sha256 f686586b...; AC79 SDK
-# V1.2.1 tool files; Python + pinned Pillow). Inside, build.py sees Linux x86-64 and calls the toolchain
-# directly (JIELI_DOCKER=0), so no nested docker-exec calls and no host<->VM file staleness: every file is
-# written and read by the same container. The project root is mounted at its own path, and the container
-# runs as the host user so build outputs are owned by you, not root.
+# Optimist's tools/docker/Dockerfile (github.com/w0ts/optimist at 9ef7b78: JieLi toolchain 20250324.1, sha256
+# f686586b...; AC79 SDK V1.2.1 tool files; Python + pinned Pillow; BUILDING.md, "The toolchain image"). Inside,
+# build.py sees Linux x86-64 and calls the toolchain directly (JIELI_DOCKER=0), so no nested docker-exec calls and
+# no host<->VM file staleness: every file is written and read by the same container. The repository root is mounted
+# at its own path, and the container runs as the host user so build outputs are owned by you, not root.
 #
 # Environment:
 #   FM1_TOOLCHAIN_IMAGE  image to use (default: fm1-toolchain:20250324.1-raqm, see tools/docker/Dockerfile.raqm)
-#   FM1_BASE             fm1-base checkout (default: ROOT/reference/fm1-base); must be inside ROOT
+#   FM1_BASE             fm1-base checkout; must be inside ROOT. Default: ROOT/platform/fm1-base-teg, the Team EG
+#                        platform that tools/get_platform.sh makes (CYMA-1 v1.1.1 and later are built on it), else
+#                        ROOT/reference/fm1-base (upstream, which builds a different package). Passed into the
+#                        container too, so the app's font generator reads the same tree
 #   FM1_AC79_SDK         a full AC79 SDK checkout inside ROOT (only for ble/wifi builds; default: the image's
 #                        /opt/ac79, which holds just the three files a --no-ble package needs)
 #   FM1B_*, FM1_FONT_FULL, X0X_FONTSET, X0X_FONT_DIRS   passed through to build.py
@@ -25,26 +28,30 @@ set -eu
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd -P)"
 IMAGE="${FM1_TOOLCHAIN_IMAGE:-fm1-toolchain:20250324.1-raqm}"
-FM1_BASE="${FM1_BASE:-$ROOT/reference/fm1-base}"
+if [ -z "${FM1_BASE:-}" ]; then
+    if [ -f "$ROOT/platform/fm1-base-teg/tools/build.py" ]; then FM1_BASE="$ROOT/platform/fm1-base-teg"
+    else FM1_BASE="$ROOT/reference/fm1-base"; fi
+fi
 FM1_BASE="$(cd "$FM1_BASE" && pwd -P)"
 
 die() { echo "build_device: $*" >&2; exit 1; }
 
 case "$FM1_BASE/" in "$ROOT"/*) ;; *) die "FM1_BASE ($FM1_BASE) must be inside $ROOT (only ROOT is mounted)";; esac
-[ -f "$FM1_BASE/tools/build.py" ] || die "no tools/build.py in $FM1_BASE"
+[ -f "$FM1_BASE/tools/build.py" ] || die "no tools/build.py in $FM1_BASE (the platform: tools/get_platform.sh)"
 [ -f "$FM1_BASE/bsp/chip/crt0.S" ] || die "$FM1_BASE/bsp is empty: git -C \"$FM1_BASE\" submodule update --init"
 
 command -v docker >/dev/null 2>&1 || die "docker CLI not found (brew install docker colima)"
 docker info >/dev/null 2>&1 || die "no docker engine: start the VM with  colima start --vm-type vz --vz-rosetta"
-docker image inspect "$IMAGE" >/dev/null 2>&1 || die "image $IMAGE not found: build it with
-  docker build --platform linux/amd64 -t fm1-toolchain:20250324.1 \"$ROOT/reference/optimist/tools/docker\"
-  docker build --platform linux/amd64 -t fm1-toolchain:20250324.1-raqm \"$ROOT/tools/docker\" -f \"$ROOT/tools/docker/Dockerfile.raqm\""
+docker image inspect "$IMAGE" >/dev/null 2>&1 || die "image $IMAGE not found: build it as BUILDING.md says
+  (\"The toolchain image\": Optimist's Dockerfile at 9ef7b78, then tools/docker/Dockerfile.raqm on top)"
 
 TTY=""
 [ -t 0 ] && [ -t 1 ] && TTY="-it"
 
 # environment for build.py inside the container
 ENVARGS="-e HOME=/tmp -e JIELI_DOCKER=0 -e JIELI_TOOLCHAIN=/opt/jieli -e FM1B_JOBS=${FM1B_JOBS:-6} -e PYTHONDONTWRITEBYTECODE=1"
+export FM1_BASE                                 # by name (the path may hold spaces): the same path inside, since
+ENVARGS="$ENVARGS -e FM1_BASE"                  # ROOT is mounted at its own path
 for v in $(env | sed -n 's/^\(FM1B_[A-Z0-9_]*\)=.*/\1/p; s/^\(FM1_FONT_FULL\)=.*/\1/p; s/^\(X0X_FONTSET\)=.*/\1/p; s/^\(X0X_FONT_DIRS\)=.*/\1/p'); do
     [ "$v" = FM1B_JOBS ] || ENVARGS="$ENVARGS -e $v"
 done
