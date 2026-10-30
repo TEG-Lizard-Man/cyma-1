@@ -12,7 +12,7 @@ Linux machine. It covers:
 CYMA-1 was installed this way on a real FM-1 on 2026-10-29:
 - v1.0 went on first, from stock V15, after a full backup read twice from macOS 26 on Apple silicon;
 - v1.1.1 and v1.1.2 went on later that day, as updates;
-- each install took about 2 minutes, and the user sounds on the unit survived every update.
+- the install itself takes about 2 minutes, and the user sounds on the unit survived every update.
 
 **How to use this page:**
 - Read [section 0](#0-before-anything-the-rules) and [section 6](#6-recovery) once, before you start.
@@ -430,8 +430,8 @@ device:  FM-1_94010102  (CYMA-1 FM-1)
 Install? Do not unplug the FM-1 while writing. [y/N]
 ```
 
-Answer **y** only if the package is `FM-1_94010103` and the device is the CYMA-1 `--info` just showed. If you pasted
-the command, **press Return** once it is on the prompt line.
+If you pasted the command and it sits on the command line without running, **press Return** to start it. Answer **y**
+only if the package is `FM-1_94010103` and the device is the CYMA-1 `--info` just showed.
 
 **5. Watch the two passes** (3.4). The number climbs to about 99 %, drops back, and climbs again. **From the drop until
 `done:`, don't touch the power switch.**
@@ -475,10 +475,14 @@ FM-1_015`**.
 - Afterwards V15 may show garbled patches or settings, because CYMA-1's store sits inside V15's settings area. Use
   **System → Reset Patches** on V15.
 
-**5.3 Back to the exact factory state** (your V15 patches and settings), only if M-Flasher read the unit in 3.2:
+**5.3 Back to the exact factory state** (your V15 patches and settings), only if M-Flasher read the unit in 3.2.
+Start from a running CYMA-1 and put it into ROM mode with its REC key, not the ROM key: switch the FM-1 off, then hold
+**REC** while you switch it on, until the screen says `UPDATE MODE (REC)` and goes dark. Click **Ignore** on any disk
+dialog. Then, in Tab A:
 
 ```sh
-"$MF" download-mode && sudo "$MF" restore ~/FM1-backup/m-flasher/fm1-YYYYMMDD-HHMMSS.bin
+sudo -v
+sudo "$MF" restore ~/FM1-backup/m-flasher/fm1-YYYYMMDD-HHMMSS.bin
 ```
 
 Before you type anything, read the line `Writes N sectors (…)`:
@@ -489,7 +493,8 @@ Before you type anything, read the line `Writes N sectors (…)`:
 **5.4 The other way back, through ROM mode** (if the head differed, or the USB route fails). It never writes below
 `0x4000`:
 1. In Tab A, start `sudo "$R" "$V15" --write --wait 60 --backup-dir ~/FM1-backup/recovery`.
-2. In Tab B, run `"$PY" "$UNBRICK" softkey` (it accepts a running CYMA-1).
+2. Within those 60 s, switch the FM-1 off, then hold **REC** while you switch it on, until the screen says
+   `UPDATE MODE (REC)` and goes dark. That is fm1-base's own way into the chip's ROM mode, so the ROM key isn't needed.
 3. Power-cycle when Tab A prints `RESTORE VERIFIED`.
 4. Use Reset Patches on V15, as in 5.2.
 
@@ -643,9 +648,10 @@ for 30 s and it keeps the old layout.
 6. Restoring another unit's dump, or this unit's dump to another unit.
 7. Clicking Initialize on the `UBOOT1.00` disk.
 8. Hand-sent SysEx. `F0 22 24 35 7F F7` (update) and `F0 22 24 35 7D F7` (ROM key) differ by one byte. The ROM key is
-   sent only by `softkey`, in 3.2 and 5.4.
-9. Holding REC, or OCT− and OCT+ together, while switching on, unless you mean to. You get ROM mode or calibration.
-   Both are harmless, but confusing in the middle of a session.
+   sent only for the backup in 3.2: by `softkey`, and by M-Flasher's `download-mode` for the optional third read.
+   Everywhere else, this guide reaches ROM mode with CYMA-1's REC key: held at power-on, or on the SAFE MODE screen.
+9. Holding REC, or OCT− and OCT+ together, while switching on, unless you mean to (as in 5.3 and 5.4). You get ROM
+   mode or calibration. Both are harmless, but confusing in the middle of a session.
 10. Two FM-1s connected at once.
 
 ---
