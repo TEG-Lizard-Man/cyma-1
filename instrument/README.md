@@ -18,7 +18,8 @@ itself.
 > runs CYMA-1's audio about 1.2–1.6× slower than the emulator's instruction counts. **v1.1.1 and v1.1.2 ran on the
 > same unit that evening:** the boot and the bell, AETHER without the crackle, and USB coming back after a replug were
 > confirmed there. v1.1.2 showed the two field bugs that **this tree, v1.1.3** (`cyma-1.fwsc`, identity
-> `FM-1_94010103`), fixes; v1.1.3 is built and tested, and **its own hardware check is still to come**. The sound and
+> `FM-1_94010103`), fixes; v1.1.3 is built and tested, and **its own hardware check is still to come**
+> <!-- CONFIRM: v1.1.3 on hardware -->. The sound and
 > screen figures are **algorithmic, from the host build**. The CPU figures closest to the device come from
 > running that exact package in the fm1-emu chip emulator at the FM-1's clock (`run_all.sh --perf`), and v1.1 was also
 > run with the emulator's clock slowed to 1.4× and 1.6× to stand in for the chip. That is still **not a measurement
@@ -366,7 +367,7 @@ exact output, untouched.
 [../notes/INSTALL.md](../notes/INSTALL.md). It covers the first install from stock V15 with a full backup, updates
 from an earlier CYMA-1, going back to V15 and recovery. This section is the Transporter route.
 
-**v1.1.3 has not been confirmed on an FM-1 yet** (v1.0, v1.1.1 and v1.1.2 have run on one since 2026-10-29). The `.fwsc` builds cleanly and passes the build's static checks: no
+**v1.1.3 has not been confirmed on an FM-1 yet** <!-- CONFIRM: v1.1.3 on hardware --> (v1.0, v1.1.1 and v1.1.2 have run on one since 2026-10-29). The `.fwsc` builds cleanly and passes the build's static checks: no
 calls from RAM-resident code, no soft-double maths, no risky 64-bit multiplies, and the memory pools fit. It also runs
 in the fm1-emu chip emulator at the FM-1's clock (`run_all.sh --perf`). None of that proves it boots, sounds right or
 keeps up on the real chip. fm1-base also has **no torn-install protection**: an install cut off halfway can leave the
