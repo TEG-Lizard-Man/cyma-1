@@ -334,7 +334,7 @@ class Cyma extends AudioWorkletProcessor {
       r.set(this.capR.subarray(0, n - first), first);
     }
     // tStart: the context time the first captured frame sounded at (exact: c0 + its frame number / deviceFs);
-    // tBoot: the device's boot, frame 0 (its boot "ting" sounds 1.5 s later); t1: the context time now
+    // tBoot: the device's boot, frame 0 (its boot sound, Team EG's chime, from 30 ms to 2.35 s); t1: the context time now
     const c0 = this.c0 === null ? currentTime : this.c0;
     this.port.postMessage({ type: "captured", l, r, sampleRate: this.deviceFs, t1: currentTime,
                             tStart: c0 + (this.capW - n) / this.deviceFs, tBoot: c0 }, [l.buffer, r.buffer]);
