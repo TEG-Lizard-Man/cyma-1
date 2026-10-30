@@ -1,0 +1,9 @@
+{
+  "what": "A playable Chladni plate: strike, bow or press a virtual plate of bronze, steel, glass or wood, 24 objects in all, and the sand on screen settles on the nodal lines of the modes you hear. Three views, live plate morphing, pressure and damping. Stock V15 only.",
+  "author": "Team EG & Lizard_Man",
+  "kinds": [
+    "synth"
+  ],
+  "play": "https://teg-lizard-man.github.io/cyma-1/",
+  "image": "media/card.png"
+}
