@@ -198,7 +198,7 @@ before it on the same unit:
 - **Bowed chords stay at two notes on the FM-1.** The governor keeps the chip from overrunning. Mallet and rain presets
   play full chords.
 - **On 21 AETHER, a MIDI note can wait for the plate.** AETHER's LFO keeps morphing the plate, and each recompute holds
-  the main loop for a few milliseconds (12–14 ms at the emulator's stand-in for a slower chip).
+  up the main loop: 12–14 ms at the emulator's stand-in for a slower chip.
 - **The first touch during the bell sounds about 15 ms late**: the bell fades out (8.7 ms), then hands the engine
   back. This happens once per boot, and only if you play within the first 2.35 s.
 - **BOOT SOUND is a gesture**, not a knob: hold GLO for half a second on the GLOBAL page.

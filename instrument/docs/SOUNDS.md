@@ -4,13 +4,12 @@ You shape a sound on CYMA-1 until you like it. This guide shows how to keep it, 
 to someone else, and later put it on your FM-1.
 
 The technical definition of everything here (file formats, codes, the USB protocol, the tests) is
-[CYMA-1-sounds-spec.md](../../docs/CYMA-1-sounds-spec.md). This page is the user's guide.
+`CYMA-1-sounds-spec.md`. This page is the user's guide.
 
 > **Status, plainly.** Saving, loading, files, codes and links work in the browser page, and the tests check them.
-> The FM-1 side (sending sounds to the device over USB) is built and tested against the firmware's own code running
-> as a virtual FM-1, but **CYMA-1 has never been installed on a real FM-1**, so nobody has sent a sound to real
-> hardware yet. The [checklist](#once-cyma-1-is-on-your-fm-1-a-first-time-checklist) at the end is how you confirm it
-> when you install it.
+> The FM-1 side (sending sounds to the device over USB) is tested against the firmware's own code running as a
+> virtual FM-1, and **it has worked on a real FM-1 since the first install, on 2026-10-29**. The
+> [checklist](#once-cyma-1-is-on-your-fm-1-a-first-time-checklist) at the end is how you confirm it on your own unit.
 
 ---
 
@@ -298,7 +297,7 @@ Everything is open (MPL-2.0) and specified, so other tools can read and write CY
 
 - **Sound file** (`format: "cyma1-sound"`, version 1): the 40 settings by name, in display units (`"decay": 1.6`,
   `"lfo_wave": "DRIFT"`). Readers decide by `format`, never by the file's extension. Unknown settings are skipped
-  with a note, missing ones take their defaults. [Spec §3.3](../../docs/CYMA-1-sounds-spec.md).
+  with a note, missing ones take their defaults. Spec §3.3.
 - **Bank file** (`format: "cyma1-bank"`): a list of sounds, each with an optional `slot` 1–32. Spec §3.5.
 - **Code**: `cy1.` + base64url of a 96-byte record plus its CRC-32. Spec §4.
 - **Link code**: `cy2.` + base64url of the same sound with every value still at its default left out (a bitmap says

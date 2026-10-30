@@ -66,7 +66,8 @@ Two fixes for the first bugs found in the field, on a unit running v1.1.2.
 - **BOOT SOUND on/off:** hold **GLO** for half a second on the GLOBAL page. The footer says `BOOT SOUND OFF` or `ON`,
   and the choice is saved with the settings. Off gives the old silent boot.
 - **The browser plays the bell too**, in place of its old soft "ting".
-- **The CYMA-1 title and its tagline hold over 3 s longer.** Any key, button or knob skips to the plate.
+- **The CYMA-1 title and its tagline hold 3 s longer**, for over 3 s in all. Any key, button or knob skips to the
+  plate.
 - **Built on the Team EG platform.** With no computer attached (on battery, or on a charger without data), fm1-base
   retried USB once a second. Each try held the main loop for 29–41 ms, and keys, TRS MIDI and the screen waited.
   - The retry is now two steps on separate passes, timed instead of waited (`platform/patches/felucca-bsp/0001`).

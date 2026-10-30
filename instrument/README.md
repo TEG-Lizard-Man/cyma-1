@@ -287,10 +287,11 @@ When you like what you hear, keep it. The full guide is [docs/SOUNDS.md](docs/SO
   goes into your user presets (U01–U32) without a press of SAVE there. A sound you only play on it is remembered by
   the settings autosave, as a knob turn is. The tools talk only to an FM-1 that answers as CYMA-1, and never touch
   the update channel. The page at claude.ai cannot reach MIDI devices, so it explains this route instead.
-  **Not yet tried on a real FM-1**: [docs/SOUNDS.md](docs/SOUNDS.md) ends with the checklist for the first time.
+  **Working on a real FM-1** since the first install (2026-10-29): [docs/SOUNDS.md](docs/SOUNDS.md) ends with the
+  checklist for a first time on your own unit.
 
 The formats (sound and bank files, codes and the short link code, the USB protocol) are specified in
-[CYMA-1-sounds-spec.md](../docs/CYMA-1-sounds-spec.md) (its revision 2026-10-24b adds the link code `cy2` and the
+`CYMA-1-sounds-spec.md` (its revision 2026-10-24b adds the link code `cy2` and the
 measured 128-character anchor limit), with frozen test vectors in `tests/sounds/vectors.json`, so other tools can read
 and write CYMA-1 sounds. `run_all.sh` tests them in the steps `sounds_vectors`, `unit_xfer`,
 `xfer_asan`, `sounds_scen`, `sounds_smoke` and `sounds_cli`, plus `sounds_chrome` with `--chrome` and the Sounds checks
@@ -377,7 +378,7 @@ the recovery tools are ready **before** you start.
 
 Work through the steps in order, from the project root (`cd "…/M-VAVE Synth Experiment"`). Steps 0–3 change nothing
 on the unit. The full background is in
-[docs/research-briefing-2026-10-24.md, §4](../docs/research-briefing-2026-10-24.md). That briefing is generic,
+`docs/research-briefing-2026-10-24.md`, §4. That briefing is generic,
 though: where it disagrees with this page (its tool paths, its power-on keys), this page is the one that is right for
 CYMA-1.
 
@@ -417,7 +418,7 @@ running. The project's `.venv312` has the `mido` and `python-rtmidi` it needs.
 
 **3. Back up the whole flash.** It holds unit-unique Bluetooth data, the key and MAC address, and the factory voices,
 and **cannot be recreated**. Use the Transporter: a Seeed XIAO **RP2040** (not an RP2350), wired to D+, D− and GND,
-never VBUS ([its guide](../reference/MvaveFM1Unbricker/TRANSPORTER-GUIDE.md)). Rehearse the whole thing once
+never VBUS ([its guide](https://github.com/Quixotic7/MvaveFM1Unbricker/blob/707470a/TRANSPORTER-GUIDE.md)). Rehearse the whole thing once
 without hardware by adding `--dry-run` to the command.
 
 ```sh
@@ -514,7 +515,7 @@ instrument/
   docs/     SPEC.md (generated), SOUNDS.md (the Sounds guide)
 ```
 
-The design is specified in [docs/CYMA-1-spec.md](../docs/CYMA-1-spec.md).
+The design is specified in `docs/CYMA-1-spec.md`.
 
 ## Licence and credits
 
