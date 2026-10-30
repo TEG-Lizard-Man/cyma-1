@@ -1,7 +1,6 @@
 <!-- Draft text for the GitHub release. Tag: v1.1.3. Title: CYMA-1 v1.1.3.
      Attach when publishing: cyma-1-v1.1.3.fwsc (611,496 bytes),
-     sha256 1c61abd4d1754a5c181cd60ed8895cf98b6d7970b1e42f3c84ddc480f0f413d3.
-     Before publishing, fill in the hardware line below (CONFIRM). -->
+     sha256 1c61abd4d1754a5c181cd60ed8895cf98b6d7970b1e42f3c84ddc480f0f413d3. -->
 
 # CYMA-1 v1.1.3
 
@@ -55,8 +54,8 @@ Follow [notes/INSTALL.md](https://github.com/TEG-Lizard-Man/cyma-1/blob/v1.1.3/n
 ## Status
 
 - v1.0, v1.1.1 and v1.1.2 have run on a real FM-1 since 2026-10-29.
-- v1.1.3 on the FM-1: <!-- CONFIRM: v1.1.3 on hardware --> _to be confirmed_. Checks: a silent boot with MASTER at
-  zero, the bell at the knob's level, and the boot landing on the sand table.
+- v1.1.3 on the FM-1: **confirmed on 2026-10-29.** The boot is silent with MASTER at zero, the bell plays in full
+  with the knob up, and the boot lands on the sand table even after MESH was the last view. The user sounds were kept.
 - **Known limits:**
   - The panel keys reach the sound in about 20–22 ms (p90 in the emulator), against about 8 ms for MIDI. That is the
     velocity sensing.

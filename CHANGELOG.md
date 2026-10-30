@@ -6,7 +6,7 @@ not measurements on an FM-1.
 
 | Version | Identity | Package sha256 | Platform | On the FM-1 |
 |---|---|---|---|---|
-| [v1.1.3](#v113-2026-10-29) | `FM-1_94010103` | `1c61abd4d1754a5c181cd60ed8895cf98b6d7970b1e42f3c84ddc480f0f413d3` | Team EG platform, with the MASTER seed | Not yet confirmed <!-- CONFIRM: v1.1.3 on hardware --> |
+| [v1.1.3](#v113-2026-10-29) | `FM-1_94010103` | `1c61abd4d1754a5c181cd60ed8895cf98b6d7970b1e42f3c84ddc480f0f413d3` | Team EG platform, with the MASTER seed | Installed and confirmed 2026-10-29 |
 | [v1.1.2](#v112-2026-10-29) | `FM-1_94010102` | `1554752c5d5694b9c23df3f67c70c9c3512e37f1e66b78daa4a1e7b1b7ef0e54` | Team EG platform | Installed 2026-10-29 |
 | [v1.1.1](#v111-2026-10-29) | `FM-1_94010101` | `a84d55e14730824d6c4301ba6bdfb337cec49491dbee529b070294684f07d3fe` | Team EG platform | Installed 2026-10-29 |
 | [v1.1](#v11-2026-10-29) | `FM-1_94010100` | not released on its own | upstream fm1-base `086cd0c` | Shipped as part of v1.1.1 |
@@ -36,7 +36,8 @@ Two fixes for the first bugs found in the field, on a unit running v1.1.2.
 - **Reproducible from this repository alone.** The Team EG platform is now patch files in `platform/`, and
   `tools/get_platform.sh` applies them to the pinned upstream. A fresh clone that follows [BUILDING.md](BUILDING.md)
   builds this package byte for byte.
-- Built and tested. Its hardware check is still to come. <!-- CONFIRM: v1.1.3 on hardware -->
+- Confirmed on the FM-1 the same night. The boot is silent with MASTER at zero, the bell plays in full with the knob up,
+  and the boot lands on the sand table after MESH was the last view.
 
 ## v1.1.2 (2026-10-29)
 

@@ -180,7 +180,7 @@ before it on the same unit:
 | v1.1 | `FM-1_94010100` | Not installed on its own: it went out as part of v1.1.1 | |
 | v1.1.1 | `FM-1_94010101`, `a84d55e1…d3fe` | Installed 2026-10-29, evening | It boots cleanly, and the bell sounds right. Held AETHER chords barely load the CPU: the crackle is gone. After an unplug and replug, USB comes back and the tools answer, so the platform's new USB retry works on the chip. The user sounds on the unit were kept |
 | v1.1.2 | `FM-1_94010102`, `1554752c…0e54` | Installed 2026-10-29, evening | The longer credit. The user sounds were kept. It also showed the two field bugs that v1.1.3 fixes |
-| **v1.1.3** | `FM-1_94010103`, `1c61abd4…13d3` | Built and tested; **not yet confirmed on the FM-1** <!-- CONFIRM: v1.1.3 on hardware --> | Still to check: a silent boot with MASTER at zero, the bell at the knob's level, and every boot landing on the sand table |
+| **v1.1.3** | `FM-1_94010103`, `1c61abd4…13d3` | **Installed and confirmed 2026-10-29, night** | A silent boot with MASTER at zero, the full bell with the knob up, and every boot landing on the sand table, even after MESH. The user sounds were kept |
 
 - No firmware package (`.fwsc`) is included in this repo. Each release attaches its package, with its sha256. The
   package is also exactly what [BUILDING.md](BUILDING.md) builds.
@@ -223,7 +223,7 @@ before it on the same unit:
 | 2026-10-29 | **The Team EG platform.** fm1-base's once-a-second USB retry, with no computer attached, held up keys and MIDI for up to 41 ms. A two-step retry cuts the emulator's MIDI-to-sound p90 from 39.9 to 7.4 ms. |
 | 2026-10-29 | **Team EG's sonic logo**: a bronze bell (E, G and a flick), picked from several candidates, played live by the engine at every boot. |
 | 2026-10-29 | **v1.1.1 and v1.1.2 on the FM-1.** The boot and the bell, AETHER without the crackle, and USB coming back after a replug, all confirmed on the unit. v1.1.2 holds the credit long enough to read, and showed the first two field bugs. |
-| 2026-10-29 | **v1.1.3**: both field bugs fixed the same night. The platform became patch files in this repo, and a fresh clone rebuilds the release byte for byte. Its hardware check is next. <!-- CONFIRM: v1.1.3 on hardware --> |
+| 2026-10-29 | **v1.1.3**: both field bugs fixed the same night. The platform became patch files in this repo, and a fresh clone rebuilds the release byte for byte. Both fixes were confirmed on the unit that night. |
 
 ## Credits
 
