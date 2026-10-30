@@ -45,7 +45,7 @@ ls "$PATCHES"/felucca-bsp/*.patch "$PATCHES"/fm1-base/*.patch >/dev/null 2>&1 ||
 case "$DEST" in /*) ;; *) DEST=$PWD/$DEST ;; esac
 
 # ---- 1. the upstream pins
-if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1 && [ -f "$ROOT/.gitmodules" ]; then
+if [ "$(git -C "$ROOT" rev-parse --show-toplevel 2>/dev/null)" = "$ROOT" ] && [ -f "$ROOT/.gitmodules" ]; then
     echo "get_platform: reference/fm1-base (git submodule update --init --recursive)"
     git -C "$ROOT" submodule update --init --recursive reference/fm1-base
     UP=$ROOT/reference/fm1-base
